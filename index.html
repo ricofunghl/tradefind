@@ -306,6 +306,21 @@
     }
     @media(max-width:480px) { .how-grid{grid-template-columns:1fr;} .rating-overview{flex-direction:column;} }
 
+    /* ── PHOTO UPLOAD ── */
+    .photo-upload-area { border:2px dashed var(--border); border-radius:var(--radius); padding:1.5rem; text-align:center; cursor:pointer; transition:all .2s; background:var(--bg); position:relative; }
+    .photo-upload-area:hover,.photo-upload-area.drag-over { border-color:var(--blue-lt); background:#eff6ff; }
+    .photo-upload-area input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+    .photo-upload-icon { font-size:2rem; display:block; margin-bottom:.4rem; }
+    .photo-upload-label { font-weight:600; font-size:.9rem; color:var(--text); display:block; }
+    .photo-upload-hint { font-size:.78rem; color:var(--muted); margin-top:.25rem; }
+    .photo-previews { display:flex; flex-wrap:wrap; gap:.6rem; margin-top:.75rem; }
+    .photo-thumb { position:relative; width:80px; height:80px; border-radius:8px; overflow:hidden; flex-shrink:0; border:2px solid var(--border); }
+    .photo-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+    .photo-thumb-remove { position:absolute; top:2px; right:2px; background:rgba(0,0,0,.6); color:#fff; border:none; border-radius:50%; width:20px; height:20px; font-size:.7rem; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; }
+    .photo-thumb-remove:hover { background:var(--red); }
+    .photo-count { font-size:.78rem; color:var(--muted); margin-top:.4rem; }
+    .photo-count.at-limit { color:var(--orange); font-weight:600; }
+
     /* ── AUTH ── */
     .auth-wrap { max-width:440px; margin:3rem auto; padding:0 1.5rem 3rem; }
     .auth-logo { text-align:center; font-size:1.6rem; font-weight:800; margin-bottom:1.75rem; cursor:pointer; }
@@ -1429,6 +1444,60 @@ function submitReview(id){
 //  JOB REQUEST FORM
 // ═══════════════════════════════════
 let selectedUrgency='flexible';
+let jobPhotos=[]; // array of base64 data URLs
+
+function onPhotoSelect(e){
+  addPhotos(Array.from(e.target.files));
+  e.target.value=''; // reset so same file can be re-added after removal
+}
+function onPhotoDragOver(e){ e.preventDefault(); document.getElementById('photo-drop-zone').classList.add('drag-over'); }
+function onPhotoDragLeave(e){ document.getElementById('photo-drop-zone').classList.remove('drag-over'); }
+function onPhotoDrop(e){
+  e.preventDefault();
+  document.getElementById('photo-drop-zone').classList.remove('drag-over');
+  addPhotos(Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('image/')));
+}
+
+function addPhotos(files){
+  const MAX=5;
+  const remaining=MAX-jobPhotos.length;
+  if(remaining<=0){showToast('Maximum 5 photos reached.','error');return;}
+  const toAdd=files.slice(0,remaining);
+  if(files.length>remaining) showToast(`Only ${remaining} more photo${remaining!==1?'s':''} allowed. First ${remaining} added.`);
+  toAdd.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      jobPhotos.push(ev.target.result);
+      renderPhotoPreviews();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function removePhoto(idx){
+  jobPhotos.splice(idx,1);
+  renderPhotoPreviews();
+}
+
+function renderPhotoPreviews(){
+  const MAX=5;
+  const container=document.getElementById('photo-previews');
+  const countEl=document.getElementById('photo-count');
+  if(!container)return;
+  container.innerHTML=jobPhotos.map((src,i)=>`
+    <div class="photo-thumb">
+      <img src="${src}" alt="Photo ${i+1}" />
+      <button class="photo-thumb-remove" onclick="removePhoto(${i})" title="Remove">✕</button>
+    </div>
+  `).join('');
+  if(countEl){
+    countEl.textContent=jobPhotos.length>0?`${jobPhotos.length} of ${MAX} photo${jobPhotos.length!==1?'s':''} added`:'';
+    countEl.className='photo-count'+(jobPhotos.length===MAX?' at-limit':'');
+  }
+  // hide drop zone input when at limit
+  const dz=document.getElementById('photo-drop-zone');
+  if(dz) dz.style.display=jobPhotos.length>=MAX?'none':'block';
+}
 
 function renderJobRequest(){
   const{params}=getHashParts();
@@ -1456,6 +1525,17 @@ function renderJobRequest(){
           </div>
           <div class="form-row full"><label>Budget (optional)</label><input type="text" id="jf-budget" placeholder="e.g. $200-$400 or 'open'" /></div>
           <div class="form-row full">
+            <label>Photos <span style="font-weight:400;color:var(--muted);">(optional — max 5, helps contractors quote accurately)</span></label>
+            <div class="photo-upload-area" id="photo-drop-zone" ondragover="onPhotoDragOver(event)" ondragleave="onPhotoDragLeave(event)" ondrop="onPhotoDrop(event)">
+              <input type="file" id="jf-photos" accept="image/*" multiple capture="environment" onchange="onPhotoSelect(event)" />
+              <span class="photo-upload-icon">📷</span>
+              <span class="photo-upload-label">Tap to take or upload photos</span>
+              <span class="photo-upload-hint">JPG, PNG, HEIC · Max 5 photos · Drag &amp; drop supported</span>
+            </div>
+            <div class="photo-previews" id="photo-previews"></div>
+            <div class="photo-count" id="photo-count"></div>
+          </div>
+          <div class="form-row full">
             <label>Posting as</label>
             <input type="text" id="jf-name" value="${esc(sess?sess.name:'')}" readonly style="background:var(--bg);cursor:not-allowed;color:var(--muted);" />
           </div>
@@ -1478,6 +1558,7 @@ function renderJobRequest(){
     </div>
   `;
   selectedUrgency='flexible';
+  jobPhotos=[];
 }
 
 function selectUrgency(u){
@@ -1505,6 +1586,7 @@ function submitJobRequest(){
     urgency:selectedUrgency,
     customerName:sess?sess.name:'Anonymous',
     customerId:sess?sess.userId:null,
+    photos:jobPhotos.slice(),
     postedAt:new Date().toISOString().split('T')[0],
     status:'open',
     quotes:[],
@@ -1584,6 +1666,12 @@ function renderJobCard(j){
         <span>🕐 ${fmtRelDate(j.postedAt)}</span>
       </div>
       <div class="job-desc">${esc(j.description)}</div>
+
+      ${j.photos&&j.photos.length>0?`
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.5rem;">
+          ${j.photos.map((src,i)=>`<div class="photo-thumb" onclick="openPhotoViewer(${JSON.stringify(j.photos)},${i})" style="cursor:pointer;" title="View photo ${i+1}"><img src="${src}" alt="Photo ${i+1}" /></div>`).join('')}
+        </div>
+      `:''}
 
       ${quotes.length>0?`
         <div style="border-top:1px solid var(--border);padding-top:.75rem;margin-top:.25rem;">
@@ -1773,6 +1861,40 @@ function submitPost(){
 // ═══════════════════════════════════
 //  TOAST
 // ═══════════════════════════════════
+function openPhotoViewer(photos,startIdx){
+  closeModal();
+  let current=startIdx;
+  const render=()=>{
+    const overlay=document.getElementById('modal-overlay');
+    if(!overlay)return;
+    overlay.innerHTML=`
+      <div style="position:relative;max-width:90vw;max-height:90vh;display:flex;flex-direction:column;align-items:center;gap:.75rem;">
+        <img src="${photos[current]}" style="max-width:90vw;max-height:80vh;border-radius:10px;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,.5);" alt="Photo ${current+1}" />
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <button class="btn btn-ghost btn-sm" onclick="viewerGo(-1)" ${photos.length<2?'style="display:none"':''}>← Prev</button>
+          <span style="color:#fff;font-size:.85rem;font-weight:600;">${current+1} / ${photos.length}</span>
+          <button class="btn btn-ghost btn-sm" onclick="viewerGo(1)" ${photos.length<2?'style="display:none"':''}>Next →</button>
+        </div>
+        <button onclick="closeModal()" style="position:absolute;top:-12px;right:-12px;background:#fff;border:none;border-radius:50%;width:32px;height:32px;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.3);">✕</button>
+      </div>
+    `;
+  };
+  window._viewerPhotos=photos;
+  window._viewerCurrent=current;
+  window.viewerGo=function(dir){
+    window._viewerCurrent=(window._viewerCurrent+dir+photos.length)%photos.length;
+    current=window._viewerCurrent;
+    render();
+  };
+  const overlay=document.createElement('div');
+  overlay.className='modal-overlay'; overlay.id='modal-overlay';
+  overlay.style.cssText='background:rgba(0,0,0,.85);';
+  document.getElementById('modal-root').appendChild(overlay);
+  document.body.style.overflow='hidden';
+  render();
+  overlay.addEventListener('click',e=>{if(e.target===overlay)closeModal();});
+}
+
 function showToast(msg,type=''){
   const root=document.getElementById('toast-root');
   const el=document.createElement('div');
