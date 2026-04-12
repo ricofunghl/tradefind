@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TradeFind — Find Local Contractors</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue:#1E40AF; --blue-lt:#3B82F6; --orange:#F97316; --bg:#F1F5F9;
+      --white:#FFFFFF; --text:#0F172A; --muted:#64748B; --border:#E2E8F0;
+      --green:#16A34A; --red:#DC2626; --yellow:#EAB308;
+      --radius:10px; --shadow:0 2px 12px rgba(0,0,0,.08);
+    }
+    body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+    /* NAV */
+    nav { background:var(--blue); color:#fff; padding:0 2rem; display:flex; align-items:center; justify-content:space-between; height:60px; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,.2); }
+    .nav-logo { font-size:1.3rem; font-weight:800; cursor:pointer; letter-spacing:-.5px; }
+    .nav-logo span { color:var(--orange); }
+    .nav-links { display:flex; gap:.5rem; align-items:center; }
+    .nav-links a { color:rgba(255,255,255,.85); text-decoration:none; font-size:.875rem; font-weight:500; padding:.4rem .75rem; border-radius:6px; transition:background .2s; cursor:pointer; }
+    .nav-links a:hover { background:rgba(255,255,255,.15); color:#fff; }
+    .nav-links a.btn-nav { background:var(--orange); color:#fff; font-weight:600; }
+    .nav-links a.btn-nav:hover { background:#ea6c04; }
+
+    /* BUTTONS */
+    .btn { display:inline-flex; align-items:center; gap:.4rem; padding:.6rem 1.2rem; border-radius:var(--radius); font-weight:600; font-size:.875rem; cursor:pointer; border:none; transition:all .2s; text-decoration:none; font-family:inherit; }
+    .btn-primary { background:var(--blue); color:#fff; }
+    .btn-primary:hover { background:var(--blue-lt); }
+    .btn-orange { background:var(--orange); color:#fff; }
+    .btn-orange:hover { background:#ea6c04; }
+    .btn-outline { background:transparent; color:var(--blue); border:2px solid var(--blue); }
+    .btn-outline:hover { background:var(--blue); color:#fff; }
+    .btn-ghost { background:#f1f5f9; color:var(--text); }
+    .btn-ghost:hover { background:#e2e8f0; }
+    .btn-green { background:var(--green); color:#fff; }
+    .btn-green:hover { background:#15803d; }
+    .btn-red { background:var(--red); color:#fff; }
+    .btn-sm { padding:.4rem .8rem; font-size:.8rem; }
+    .btn-xs { padding:.25rem .6rem; font-size:.75rem; }
+    .btn:disabled { opacity:.5; cursor:not-allowed; }
+
+    /* HERO */
+    .hero { background:linear-gradient(135deg,#1e3a8a 0%,#1e40af 50%,#1d4ed8 100%); color:#fff; text-align:center; padding:5rem 2rem 4rem; }
+    .hero h1 { font-size:clamp(1.8rem,5vw,3rem); font-weight:800; margin-bottom:.75rem; }
+    .hero h1 span { color:var(--orange); }
+    .hero p { font-size:1.1rem; opacity:.85; margin-bottom:2rem; }
+    .hero-tabs { display:flex; gap:.5rem; justify-content:center; margin-bottom:1.5rem; }
+    .hero-tab { background:rgba(255,255,255,.15); color:#fff; border:2px solid rgba(255,255,255,.3); border-radius:8px; padding:.5rem 1.25rem; font-weight:600; font-size:.9rem; cursor:pointer; transition:all .2s; }
+    .hero-tab.active { background:#fff; color:var(--blue); border-color:#fff; }
+    .hero-search { display:flex; gap:.75rem; max-width:680px; margin:0 auto; background:#fff; padding:.5rem; border-radius:12px; box-shadow:0 4px 24px rgba(0,0,0,.2); }
+    .hero-search select,.hero-search input { flex:1; border:none; outline:none; font-size:1rem; padding:.6rem .75rem; font-family:inherit; color:var(--text); background:transparent; min-width:0; }
+    .hero-search select { border-right:1px solid var(--border); }
+    .hero-search button { background:var(--orange); color:#fff; border:none; border-radius:8px; padding:.7rem 1.5rem; font-weight:700; font-size:1rem; cursor:pointer; white-space:nowrap; transition:background .2s; }
+    .hero-search button:hover { background:#ea6c04; }
+
+    /* CONTAINER / SECTION */
+    .container { max-width:1200px; margin:0 auto; padding:0 1.5rem; }
+    .section { padding:3.5rem 0; }
+    .section-title { font-size:1.5rem; font-weight:700; margin-bottom:.4rem; }
+    .section-sub { color:var(--muted); margin-bottom:2rem; }
+
+    /* TRADE GRID */
+    .trade-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:1rem; }
+    .trade-card { background:var(--white); border-radius:var(--radius); padding:1.25rem .75rem; text-align:center; cursor:pointer; border:2px solid transparent; transition:all .2s; box-shadow:var(--shadow); }
+    .trade-card:hover { border-color:var(--blue); transform:translateY(-3px); box-shadow:0 6px 20px rgba(30,64,175,.15); }
+    .trade-card .icon { font-size:2rem; display:block; margin-bottom:.5rem; }
+    .trade-card .label { font-size:.8rem; font-weight:600; color:var(--text); }
+
+    /* HOW IT WORKS */
+    .how-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:2rem; }
+    .how-step { text-align:center; }
+    .how-step .num { width:52px; height:52px; border-radius:50%; background:var(--blue); color:#fff; font-size:1.3rem; font-weight:800; display:flex; align-items:center; justify-content:center; margin:0 auto 1rem; }
+    .how-step h3 { font-size:1rem; font-weight:700; margin-bottom:.4rem; }
+    .how-step p { font-size:.875rem; color:var(--muted); }
+
+    /* STATS */
+    .stats-bar { background:var(--blue); color:#fff; padding:2rem; display:flex; justify-content:center; gap:4rem; flex-wrap:wrap; }
+    .stat { text-align:center; }
+    .stat .num { font-size:2rem; font-weight:800; color:var(--orange); }
+    .stat .label { font-size:.85rem; opacity:.85; margin-top:.2rem; }
+
+    /* LISTINGS */
+    .listings-layout { display:flex; gap:2rem; align-items:flex-start; padding:2rem 0; }
+    .sidebar { width:260px; flex-shrink:0; background:var(--white); border-radius:var(--radius); padding:1.25rem; box-shadow:var(--shadow); position:sticky; top:72px; }
+    .sidebar h3 { font-size:1rem; font-weight:700; margin-bottom:1rem; }
+    .filter-group { margin-bottom:1.25rem; }
+    .filter-group label.group-label { font-size:.8rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:.5rem; }
+    .filter-group input[type=text],.filter-group select { width:100%; padding:.5rem .75rem; border:1px solid var(--border); border-radius:6px; font-size:.875rem; font-family:inherit; outline:none; }
+    .filter-group input:focus,.filter-group select:focus { border-color:var(--blue-lt); }
+    .checkbox-list { display:flex; flex-direction:column; gap:.4rem; }
+    .checkbox-list label { display:flex; align-items:center; gap:.5rem; font-size:.875rem; cursor:pointer; }
+    .checkbox-list input[type=checkbox] { cursor:pointer; accent-color:var(--blue); }
+    .filter-group input[type=range] { width:100%; accent-color:var(--blue); }
+    .range-labels { display:flex; justify-content:space-between; font-size:.75rem; color:var(--muted); margin-top:.25rem; }
+    .listings-main { flex:1; min-width:0; }
+    .results-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
+    .results-count { font-size:.9rem; color:var(--muted); }
+    .sort-select { padding:.4rem .75rem; border:1px solid var(--border); border-radius:6px; font-size:.875rem; font-family:inherit; outline:none; }
+    .cards-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:1.25rem; }
+
+    /* CONTRACTOR CARD */
+    .card { background:var(--white); border-radius:var(--radius); padding:1.25rem; box-shadow:var(--shadow); border:2px solid transparent; position:relative; transition:all .2s; display:flex; flex-direction:column; gap:.75rem; }
+    .card:hover { border-color:var(--blue-lt); box-shadow:0 6px 20px rgba(30,64,175,.12); }
+    .card-featured { border-color:var(--orange); }
+    .featured-badge { position:absolute; top:-1px; right:16px; background:var(--orange); color:#fff; font-size:.7rem; font-weight:700; padding:.2rem .6rem; border-radius:0 0 6px 6px; letter-spacing:.05em; text-transform:uppercase; }
+    .card-header { display:flex; gap:.875rem; align-items:flex-start; }
+    .avatar { width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:1.1rem; color:#fff; flex-shrink:0; position:relative; }
+    .avatar-verified { position:absolute; bottom:-2px; right:-2px; background:var(--green); color:#fff; border-radius:50%; width:18px; height:18px; font-size:.65rem; display:flex; align-items:center; justify-content:center; border:2px solid #fff; }
+    .card-title { flex:1; }
+    .card-title h3 { font-size:1rem; font-weight:700; line-height:1.3; }
+    .trade-badge { display:inline-block; font-size:.72rem; font-weight:600; padding:.15rem .5rem; border-radius:4px; margin-top:.25rem; color:#fff; }
+    .card-meta { display:flex; align-items:center; gap:.4rem; font-size:.8rem; color:var(--muted); }
+    .stars-display { display:inline-flex; gap:1px; }
+    .star-f { color:var(--orange); font-size:.9rem; }
+    .star-e { color:#d1d5db; font-size:.9rem; }
+    .star-h { position:relative; display:inline-block; color:#d1d5db; font-size:.9rem; }
+    .star-h::after { content:'★'; position:absolute; left:0; top:0; width:50%; overflow:hidden; color:var(--orange); }
+    .card-desc { font-size:.85rem; color:var(--muted); line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .tags { display:flex; flex-wrap:wrap; gap:.4rem; }
+    .tag { background:#f1f5f9; border-radius:4px; padding:.2rem .5rem; font-size:.72rem; font-weight:600; color:var(--muted); }
+    .tag-green { background:#dcfce7; color:#15803d; }
+    .card-actions { display:flex; gap:.6rem; margin-top:auto; }
+    .card-actions .btn { flex:1; justify-content:center; }
+
+    /* RESPONSE RATE BADGE */
+    .response-pill { display:inline-flex; align-items:center; gap:.3rem; background:#f0fdf4; color:var(--green); font-size:.72rem; font-weight:600; padding:.2rem .5rem; border-radius:4px; }
+
+    /* EMPTY STATE */
+    .empty-state { text-align:center; padding:4rem 2rem; color:var(--muted); }
+    .empty-state .big-icon { font-size:4rem; margin-bottom:1rem; }
+    .empty-state h3 { font-size:1.2rem; font-weight:700; color:var(--text); margin-bottom:.5rem; }
+
+    /* MODAL */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:200; display:flex; align-items:center; justify-content:center; padding:1rem; animation:fadeIn .2s ease; }
+    .modal { background:var(--white); border-radius:14px; width:100%; max-width:680px; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.3); animation:slideUp .25s ease; }
+    @keyframes fadeIn { from{opacity:0}to{opacity:1} }
+    @keyframes slideUp { from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1} }
+    .modal-header { padding:1.5rem 1.5rem 0; display:flex; gap:1rem; align-items:flex-start; position:relative; }
+    .modal-close { position:absolute; top:1rem; right:1rem; background:var(--bg); border:none; border-radius:50%; width:32px; height:32px; cursor:pointer; font-size:1.1rem; display:flex; align-items:center; justify-content:center; color:var(--muted); transition:background .2s; }
+    .modal-close:hover { background:var(--border); }
+    .modal-body { padding:1.25rem 1.5rem 1.5rem; }
+    .modal-name { font-size:1.3rem; font-weight:800; }
+    .modal-meta { display:flex; gap:.75rem; align-items:center; flex-wrap:wrap; margin-top:.4rem; }
+    .contact-bar { display:flex; gap:.5rem; flex-wrap:wrap; margin:1rem 0; }
+    .stats-row { display:flex; gap:1.5rem; background:var(--bg); border-radius:var(--radius); padding:1rem; margin-bottom:1rem; }
+    .stat-item { text-align:center; flex:1; }
+    .stat-item .val { font-size:1.3rem; font-weight:800; color:var(--blue); }
+    .stat-item .lbl { font-size:.75rem; color:var(--muted); margin-top:.1rem; }
+    .modal-section-title { font-size:.95rem; font-weight:700; margin:1.25rem 0 .75rem; border-top:1px solid var(--border); padding-top:1rem; }
+
+    /* UBER-STYLE RATING BLOCK */
+    .rating-overview { display:flex; gap:1.5rem; background:var(--bg); border-radius:var(--radius); padding:1.25rem; margin-bottom:1rem; }
+    .rating-big { text-align:center; min-width:80px; }
+    .rating-big .score { font-size:3rem; font-weight:800; color:var(--text); line-height:1; }
+    .rating-big .out-of { font-size:.8rem; color:var(--muted); margin-top:.2rem; }
+    .rating-big .count { font-size:.75rem; color:var(--muted); margin-top:.25rem; }
+    .rating-bars { flex:1; display:flex; flex-direction:column; gap:.3rem; }
+    .rating-bar-row { display:flex; align-items:center; gap:.5rem; font-size:.8rem; }
+    .rating-bar-row .bar-label { width:20px; text-align:right; color:var(--muted); font-weight:600; flex-shrink:0; }
+    .rating-bar-track { flex:1; background:#e2e8f0; border-radius:99px; height:8px; overflow:hidden; }
+    .rating-bar-fill { height:100%; background:var(--orange); border-radius:99px; transition:width .4s ease; }
+    .rating-bar-count { width:24px; color:var(--muted); font-size:.75rem; }
+    .dim-ratings { display:grid; grid-template-columns:1fr 1fr; gap:.6rem; margin-bottom:1rem; }
+    .dim-row { display:flex; align-items:center; justify-content:space-between; background:var(--bg); border-radius:6px; padding:.4rem .75rem; font-size:.8rem; }
+    .dim-row .dim-name { color:var(--muted); }
+    .dim-row .dim-score { font-weight:700; color:var(--text); display:flex; align-items:center; gap:.3rem; }
+
+    /* REVIEW CARD */
+    .review-card { background:var(--bg); border-radius:var(--radius); padding:.875rem; margin-bottom:.75rem; }
+    .review-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:.4rem; }
+    .review-author-wrap { display:flex; align-items:center; gap:.5rem; }
+    .review-avatar { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.75rem; font-weight:700; color:#fff; flex-shrink:0; }
+    .review-author { font-weight:600; font-size:.875rem; }
+    .review-date { font-size:.75rem; color:var(--muted); }
+    .verified-badge { display:inline-flex; align-items:center; gap:.2rem; background:#dcfce7; color:#15803d; font-size:.7rem; font-weight:700; padding:.15rem .4rem; border-radius:4px; }
+    .review-comment { font-size:.85rem; color:var(--text); line-height:1.6; margin-top:.5rem; }
+    .review-dims { display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.5rem; }
+    .review-dim-tag { font-size:.72rem; background:#eff6ff; color:var(--blue); padding:.15rem .45rem; border-radius:4px; font-weight:600; }
+    .review-footer { display:flex; align-items:center; justify-content:space-between; margin-top:.6rem; padding-top:.5rem; border-top:1px solid var(--border); }
+    .helpful-btn { background:none; border:1px solid var(--border); border-radius:6px; padding:.2rem .6rem; font-size:.75rem; cursor:pointer; color:var(--muted); font-family:inherit; transition:all .2s; display:flex; align-items:center; gap:.3rem; }
+    .helpful-btn:hover,.helpful-btn.voted { border-color:var(--blue); color:var(--blue); background:#eff6ff; }
+    .contractor-response { background:#eff6ff; border-left:3px solid var(--blue); border-radius:0 6px 6px 0; padding:.6rem .75rem; margin-top:.5rem; }
+    .contractor-response .resp-label { font-size:.72rem; font-weight:700; color:var(--blue); margin-bottom:.25rem; }
+    .contractor-response p { font-size:.82rem; color:var(--text); line-height:1.5; }
+
+    /* REVIEW FORM */
+    .review-form { background:var(--bg); border-radius:var(--radius); padding:1rem; }
+    .form-row { margin-bottom:.75rem; }
+    .form-row label { display:block; font-size:.8rem; font-weight:600; color:var(--muted); margin-bottom:.3rem; }
+    .form-row input,.form-row textarea,.form-row select { width:100%; padding:.6rem .75rem; border:1px solid var(--border); border-radius:6px; font-size:.875rem; font-family:inherit; outline:none; resize:vertical; }
+    .form-row input:focus,.form-row textarea:focus,.form-row select:focus { border-color:var(--blue-lt); }
+    .form-row.error input,.form-row.error textarea,.form-row.error select { border-color:var(--red); }
+    .star-picker { display:flex; gap:.25rem; }
+    .star-picker span { font-size:1.5rem; cursor:pointer; transition:transform .1s; color:#d1d5db; user-select:none; }
+    .star-picker span.active { color:var(--orange); }
+    .star-picker span:hover { transform:scale(1.2); }
+    .dim-pickers { display:grid; grid-template-columns:1fr 1fr; gap:.6rem; margin-bottom:.75rem; }
+    .dim-picker-row label { font-size:.75rem; font-weight:600; color:var(--muted); display:block; margin-bottom:.2rem; }
+    .mini-stars { display:flex; gap:.1rem; }
+    .mini-stars span { font-size:1.1rem; cursor:pointer; color:#d1d5db; transition:color .15s; user-select:none; }
+    .mini-stars span.active { color:var(--orange); }
+
+    /* POST AD FORM */
+    .post-form-wrap { max-width:700px; margin:2rem auto; padding:0 1.5rem 3rem; }
+    .post-form-wrap h2 { font-size:1.75rem; font-weight:800; margin-bottom:.3rem; }
+    .post-form-wrap .sub { color:var(--muted); margin-bottom:2rem; }
+    .form-card { background:var(--white); border-radius:var(--radius); padding:1.75rem; box-shadow:var(--shadow); margin-bottom:1.25rem; }
+    .form-card h3 { font-size:1rem; font-weight:700; margin-bottom:1.25rem; color:var(--blue); border-bottom:2px solid var(--bg); padding-bottom:.75rem; }
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .form-grid .full { grid-column:1/-1; }
+    .char-count { text-align:right; font-size:.75rem; color:var(--muted); margin-top:.25rem; }
+    .tags-check { display:flex; flex-wrap:wrap; gap:.75rem; }
+    .tags-check label { display:flex; align-items:center; gap:.4rem; font-size:.875rem; cursor:pointer; background:var(--bg); padding:.4rem .75rem; border-radius:6px; border:2px solid transparent; transition:all .2s; }
+    .tags-check label:has(input:checked) { border-color:var(--blue); background:#eff6ff; }
+    .tags-check input { cursor:pointer; accent-color:var(--blue); }
+    .toggle { position:relative; width:44px; height:24px; }
+    .toggle input { display:none; }
+    .toggle-slider { position:absolute; inset:0; background:var(--border); border-radius:99px; cursor:pointer; transition:background .2s; }
+    .toggle-slider::after { content:''; position:absolute; width:18px; height:18px; background:#fff; border-radius:50%; top:3px; left:3px; transition:transform .2s; }
+    .toggle input:checked + .toggle-slider { background:var(--orange); }
+    .toggle input:checked + .toggle-slider::after { transform:translateX(20px); }
+
+    /* JOB REQUEST FORM */
+    .job-form-wrap { max-width:680px; margin:2rem auto; padding:0 1.5rem 3rem; }
+    .job-form-wrap h2 { font-size:1.75rem; font-weight:800; margin-bottom:.3rem; }
+    .urgency-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.6rem; }
+    .urgency-opt { border:2px solid var(--border); border-radius:var(--radius); padding:.75rem .5rem; text-align:center; cursor:pointer; transition:all .2s; }
+    .urgency-opt:hover { border-color:var(--blue-lt); }
+    .urgency-opt.selected { border-color:var(--blue); background:#eff6ff; }
+    .urgency-opt .u-icon { font-size:1.5rem; display:block; margin-bottom:.3rem; }
+    .urgency-opt .u-label { font-size:.8rem; font-weight:600; }
+    .urgency-opt.emergency .u-label { color:var(--red); }
+    .urgency-opt.emergency.selected { border-color:var(--red); background:#fff1f2; }
+
+    /* JOBS BOARD */
+    .jobs-layout { max-width:900px; margin:0 auto; padding:2rem 1.5rem; }
+    .jobs-tabs { display:flex; gap:.5rem; border-bottom:2px solid var(--border); margin-bottom:1.5rem; }
+    .jobs-tab { padding:.6rem 1rem; font-weight:600; font-size:.875rem; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; color:var(--muted); transition:all .2s; }
+    .jobs-tab.active { color:var(--blue); border-bottom-color:var(--blue); }
+    .job-card { background:var(--white); border-radius:var(--radius); padding:1.25rem; box-shadow:var(--shadow); margin-bottom:1rem; border:2px solid transparent; }
+    .job-card:hover { border-color:var(--border); }
+    .job-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:.75rem; }
+    .job-title { font-size:1rem; font-weight:700; }
+    .job-status { font-size:.72rem; font-weight:700; padding:.25rem .6rem; border-radius:99px; text-transform:uppercase; letter-spacing:.05em; }
+    .status-open { background:#fef9c3; color:#854d0e; }
+    .status-quoted { background:#dbeafe; color:#1e40af; }
+    .status-hired { background:#dcfce7; color:#15803d; }
+    .status-completed { background:#f1f5f9; color:#475569; }
+    .status-cancelled { background:#fee2e2; color:#991b1b; }
+    .job-meta { display:flex; gap:1rem; flex-wrap:wrap; font-size:.8rem; color:var(--muted); margin-bottom:.75rem; }
+    .job-desc { font-size:.875rem; color:var(--muted); line-height:1.6; margin-bottom:.75rem; }
+    .job-footer { display:flex; justify-content:space-between; align-items:center; }
+    .quote-count { font-size:.8rem; color:var(--muted); }
+    .quote-count strong { color:var(--blue); }
+    .urgency-tag { display:inline-flex; align-items:center; gap:.3rem; font-size:.75rem; font-weight:700; padding:.2rem .5rem; border-radius:4px; }
+    .urg-emergency { background:#fee2e2; color:#991b1b; }
+    .urg-today { background:#fff7ed; color:#c2410c; }
+    .urg-week { background:#fef9c3; color:#854d0e; }
+    .urg-flexible { background:#f0fdf4; color:#15803d; }
+
+    /* QUOTES PANEL */
+    .quote-card { background:var(--bg); border-radius:var(--radius); padding:1rem; margin-bottom:.75rem; border:2px solid transparent; transition:border-color .2s; }
+    .quote-card:hover { border-color:var(--border); }
+    .quote-header { display:flex; gap:.75rem; align-items:center; margin-bottom:.6rem; }
+    .quote-price { font-size:1.3rem; font-weight:800; color:var(--green); }
+    .quote-eta { font-size:.8rem; color:var(--muted); }
+    .quote-message { font-size:.85rem; color:var(--text); line-height:1.6; margin-bottom:.6rem; }
+    .quote-actions { display:flex; gap:.5rem; }
+
+    /* TOAST */
+    .toast { position:fixed; bottom:2rem; right:2rem; background:#0f172a; color:#fff; padding:.875rem 1.25rem; border-radius:var(--radius); font-size:.9rem; font-weight:500; z-index:999; display:flex; align-items:center; gap:.5rem; animation:slideInRight .3s ease,fadeOut .4s ease 2.6s forwards; box-shadow:0 8px 30px rgba(0,0,0,.3); }
+    .toast.success::before { content:'✓'; color:var(--green); font-weight:800; }
+    .toast.error::before { content:'✕'; color:var(--red); font-weight:800; }
+    @keyframes slideInRight { from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1} }
+    @keyframes fadeOut { from{opacity:1}to{opacity:0} }
+
+    /* FOOTER */
+    footer { background:var(--text); color:rgba(255,255,255,.7); padding:2rem; text-align:center; font-size:.85rem; }
+    footer a { color:rgba(255,255,255,.7); text-decoration:none; margin:0 .5rem; }
+    footer a:hover { color:#fff; }
+
+    /* MOBILE */
+    .filter-toggle { display:none; }
+    .sidebar-overlay { display:none; }
+    @media(max-width:900px) { .cards-grid{grid-template-columns:1fr;} }
+    @media(max-width:768px) {
+      .how-grid{grid-template-columns:1fr 1fr;}
+      .form-grid{grid-template-columns:1fr;}
+      .urgency-grid{grid-template-columns:1fr 1fr;}
+      .dim-pickers{grid-template-columns:1fr;}
+      .hero-search{flex-direction:column;}
+      .hero-search select{border-right:none;border-bottom:1px solid var(--border);}
+      .stats-bar{gap:2rem;}
+      .dim-ratings{grid-template-columns:1fr;}
+      .filter-toggle { display:flex; align-items:center; gap:.5rem; margin-bottom:1rem; background:var(--white); border:1px solid var(--border); border-radius:var(--radius); padding:.6rem 1rem; font-weight:600; cursor:pointer; width:100%; font-size:.875rem; }
+      .sidebar { position:fixed; top:0; left:-300px; height:100vh; z-index:300; width:280px; overflow-y:auto; transition:left .3s ease; border-radius:0; padding-top:2rem; }
+      .sidebar.open { left:0; }
+      .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:299; }
+      .sidebar-overlay.open { display:block; }
+      .listings-layout{flex-direction:column;}
+      .nav-links .hide-mobile{display:none;}
+    }
+    @media(max-width:480px) { .how-grid{grid-template-columns:1fr;} .rating-overview{flex-direction:column;} }
+  </style>
+</head>
+<body>
+
+<nav id="main-nav">
+  <div class="nav-logo" onclick="navigate('#/')">Trade<span>Find</span></div>
+  <div class="nav-links">
+    <a class="hide-mobile" onclick="navigate('#/listings')">Browse</a>
+    <a class="hide-mobile" onclick="navigate('#/jobs')">Jobs Board</a>
+    <a onclick="navigate('#/request')">📋 Post a Job</a>
+    <a onclick="navigate('#/post')" class="btn-nav">+ List Business</a>
+  </div>
+</nav>
+
+<div id="app"></div>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+
+<script>
+// ═══════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════
+const TRADES = [
+  {id:'plumber',    label:'Plumber',          icon:'🔧',color:'#0EA5E9'},
+  {id:'electrician',label:'Electrician',       icon:'⚡',color:'#CA8A04'},
+  {id:'builder',    label:'Builder/Renovator', icon:'🏗️',color:'#78716C'},
+  {id:'carpenter',  label:'Carpenter',         icon:'🪚',color:'#A16207'},
+  {id:'painter',    label:'Painter',           icon:'🎨',color:'#7C3AED'},
+  {id:'tiler',      label:'Tiler',             icon:'🪟',color:'#0891B2'},
+  {id:'roofer',     label:'Roofer',            icon:'🏠',color:'#B45309'},
+  {id:'hvac',       label:'HVAC',              icon:'❄️',color:'#059669'},
+  {id:'landscaper', label:'Landscaper',        icon:'🌿',color:'#65A30D'},
+  {id:'handyman',   label:'Handyman',          icon:'🔨',color:'#475569'},
+];
+
+const SEED_CONTRACTORS = [
+  {id:'1',name:'Blue River Plumbing',trade:'plumber',location:'Sydney',
+   description:'Fully licensed plumbers with 15+ years experience. We handle everything from leaky taps to full bathroom renovations. Available 24/7 for emergencies.',
+   phone:'0412 345 678',email:'info@blueriverplumbing.com',website:'blueriverplumbing.com',
+   yearsExp:15,rating:4.8,reviewCount:3,verified:true,responseRate:98,completedJobs:214,
+   tags:['Licensed','Insured','24/7','Free Quotes'],postedAt:'2026-01-10',featured:true,
+   reviews:[
+     {id:'r1',author:'James K.',rating:5,quality:5,punctuality:5,communication:5,value:4,
+      comment:'Fixed our burst pipe at 2am without fuss. Arrived in 20 minutes and had it sorted in an hour. Highly recommend!',
+      date:'2026-03-15',verified:true,helpful:12,voted:false,response:'Thank you James! We pride ourselves on emergency response times.'},
+     {id:'r2',author:'Sarah M.',rating:5,quality:5,punctuality:5,communication:4,value:5,
+      comment:'Professional and very clean. Replaced all bathroom fittings and left the place spotless. Will use again.',
+      date:'2026-02-28',verified:true,helpful:8,voted:false,response:null},
+     {id:'r3',author:'Tom B.',rating:4,quality:4,punctuality:3,communication:4,value:4,
+      comment:'Good work, fair price. Took a little longer than estimated but the quality was solid.',
+      date:'2026-01-20',verified:false,helpful:3,voted:false,response:null},
+   ],postedAt:'2026-01-10'},
+
+  {id:'2',name:'Watts Electrical Services',trade:'electrician',location:'Melbourne',
+   description:'Master electricians servicing residential and commercial properties. Specialising in switchboard upgrades, solar installations, and EV charger fitting.',
+   phone:'0423 456 789',email:'hello@wattselectrical.com.au',website:'',
+   yearsExp:12,rating:4.9,reviewCount:2,verified:true,responseRate:100,completedJobs:342,
+   tags:['Licensed','Insured','Free Quotes','Senior Discount'],postedAt:'2026-01-15',featured:true,
+   reviews:[
+     {id:'r4',author:'Lisa P.',rating:5,quality:5,punctuality:5,communication:5,value:5,
+      comment:'Installed solar panels perfectly. Very knowledgeable about the rebate process too — saved us $1,800.',
+      date:'2026-03-20',verified:true,helpful:19,voted:false,response:'So glad we could help Lisa! Enjoy the savings.'},
+     {id:'r5',author:'Mark D.',rating:5,quality:5,punctuality:5,communication:4,value:5,
+      comment:'Upgraded our switchboard quickly and safely. Explained everything clearly.',
+      date:'2026-03-01',verified:true,helpful:6,voted:false,response:null},
+   ],postedAt:'2026-01-15'},
+
+  {id:'3',name:'Summit Builders',trade:'builder',location:'Brisbane',
+   description:'Award-winning builders transforming homes for over 20 years. Kitchen renovations, bathroom makeovers, extensions, and new builds. Quality craftsmanship guaranteed.',
+   phone:'0434 567 890',email:'build@summitbuilders.com',website:'summitbuilders.com',
+   yearsExp:20,rating:4.7,reviewCount:2,verified:true,responseRate:92,completedJobs:189,
+   tags:['Licensed','Insured','Free Quotes'],postedAt:'2026-01-20',featured:true,
+   reviews:[
+     {id:'r6',author:'Angela R.',rating:5,quality:5,punctuality:5,communication:4,value:4,
+      comment:'Our kitchen renovation is stunning! On time and on budget. The team was respectful of our home.',
+      date:'2026-03-10',verified:true,helpful:14,voted:false,response:'Thank you Angela, it was a joy to work with you!'},
+     {id:'r7',author:'Chris L.',rating:4,quality:4,punctuality:3,communication:4,value:4,
+      comment:'Great work overall, minor delays but the final result was excellent. Would recommend.',
+      date:'2026-02-14',verified:false,helpful:2,voted:false,response:null},
+   ],postedAt:'2026-01-20'},
+
+  {id:'4',name:'Oak & Grain Carpentry',trade:'carpenter',location:'Perth',
+   description:'Custom cabinetry, decking, and furniture crafted with precision. We use sustainably sourced timber and deliver bespoke pieces that last a lifetime.',
+   phone:'0445 678 901',email:'carpentry@oakgrain.com.au',website:'',
+   yearsExp:8,rating:4.6,reviewCount:2,verified:false,responseRate:85,completedJobs:76,
+   tags:['Licensed','Free Quotes'],postedAt:'2026-02-01',featured:false,
+   reviews:[
+     {id:'r8',author:'Nina T.',rating:5,quality:5,punctuality:4,communication:5,value:4,
+      comment:'Built us a beautiful deck. Attention to detail is incredible — every board perfectly aligned.',
+      date:'2026-03-05',verified:true,helpful:9,voted:false,response:null},
+     {id:'r9',author:'Steve W.',rating:4,quality:4,punctuality:4,communication:4,value:4,
+      comment:'Custom wardrobes look amazing. Slight wait for materials but worth it.',
+      date:'2026-02-10',verified:false,helpful:1,voted:false,response:null},
+   ],postedAt:'2026-02-01'},
+
+  {id:'5',name:'PrecisionPaint Pros',trade:'painter',location:'Adelaide',
+   description:'Interior and exterior painting specialists. Flawless prep, premium paints, and expert colour consultation. Residential and commercial projects welcome.',
+   phone:'0456 789 012',email:'quotes@precisionpaint.com.au',website:'precisionpaint.com.au',
+   yearsExp:10,rating:4.5,reviewCount:1,verified:true,responseRate:90,completedJobs:127,
+   tags:['Insured','Free Quotes','Senior Discount'],postedAt:'2026-02-05',featured:false,
+   reviews:[
+     {id:'r10',author:'Karen F.',rating:5,quality:5,punctuality:4,communication:5,value:4,
+      comment:'Painted our entire house interior in 3 days. Spotless finish and zero mess left behind.',
+      date:'2026-02-20',verified:true,helpful:7,voted:false,response:null},
+   ],postedAt:'2026-02-05'},
+
+  {id:'6',name:'TileRight Solutions',trade:'tiler',location:'Sydney',
+   description:'Expert tiling for kitchens, bathrooms, and outdoor spaces. We source premium tiles at wholesale prices and deliver impeccable results every time.',
+   phone:'0467 890 123',email:'tileright@gmail.com',website:'',
+   yearsExp:9,rating:4.7,reviewCount:2,verified:true,responseRate:94,completedJobs:98,
+   tags:['Licensed','Free Quotes'],postedAt:'2026-02-10',featured:false,
+   reviews:[
+     {id:'r11',author:'Olivia G.',rating:5,quality:5,punctuality:5,communication:5,value:4,
+      comment:'Our new bathroom tiles look incredible! Perfectly straight lines even around awkward corners.',
+      date:'2026-03-12',verified:true,helpful:11,voted:false,response:'Thank you Olivia! Corner work is our speciality.'},
+     {id:'r12',author:'Paul H.',rating:4,quality:4,punctuality:4,communication:4,value:4,
+      comment:'Quick turnaround and great quality. Would use again.',
+      date:'2026-02-25',verified:false,helpful:2,voted:false,response:null},
+   ],postedAt:'2026-02-10'},
+
+  {id:'7',name:'SkyShield Roofing',trade:'roofer',location:'Melbourne',
+   description:'Roof repairs, restoration, and replacement. We handle colorbond, terracotta, and slate. Free thermal imaging inspection to detect leaks.',
+   phone:'0478 901 234',email:'info@skyshieldroofing.com',website:'skyshieldroofing.com',
+   yearsExp:18,rating:4.8,reviewCount:3,verified:true,responseRate:97,completedJobs:261,
+   tags:['Licensed','Insured','Free Quotes','24/7'],postedAt:'2026-02-15',featured:false,
+   reviews:[
+     {id:'r13',author:'David C.',rating:5,quality:5,punctuality:5,communication:5,value:5,
+      comment:'Found and fixed a leak that three other roofers missed. Used thermal imaging — worth every cent.',
+      date:'2026-03-18',verified:true,helpful:21,voted:false,response:'That thermal camera has paid for itself many times over!'},
+     {id:'r14',author:'Emma S.',rating:5,quality:5,punctuality:5,communication:4,value:4,
+      comment:'Full roof replacement done in 2 days. Excellent clean-up after.',
+      date:'2026-03-02',verified:true,helpful:8,voted:false,response:null},
+     {id:'r15',author:'John A.',rating:4,quality:4,punctuality:3,communication:4,value:4,
+      comment:'Good value for colorbond replacement.',
+      date:'2026-02-15',verified:false,helpful:1,voted:false,response:null},
+   ],postedAt:'2026-02-15'},
+
+  {id:'8',name:'AirFlow HVAC',trade:'hvac',location:'Brisbane',
+   description:'Installation, service, and repair of all air conditioning and heating systems. Split systems, ducted, evaporative — fast response times.',
+   phone:'0489 012 345',email:'airflow@hvac.net.au',website:'',
+   yearsExp:14,rating:4.6,reviewCount:1,verified:true,responseRate:88,completedJobs:143,
+   tags:['Licensed','Insured','Free Quotes'],postedAt:'2026-02-20',featured:false,
+   reviews:[
+     {id:'r16',author:'Rachel N.',rating:5,quality:5,punctuality:5,communication:4,value:4,
+      comment:'Installed two split systems in a day. Neat, efficient, and great price.',
+      date:'2026-03-08',verified:true,helpful:5,voted:false,response:null},
+   ],postedAt:'2026-02-20'},
+
+  {id:'9',name:'GreenThumb Landscaping',trade:'landscaper',location:'Perth',
+   description:'Full landscape design and construction. Lawns, gardens, retaining walls, paving, irrigation, and pool surrounds. We turn ordinary backyards into masterpieces.',
+   phone:'0490 123 456',email:'design@greenthumb.com.au',website:'greenthumb.com.au',
+   yearsExp:11,rating:4.9,reviewCount:2,verified:true,responseRate:99,completedJobs:178,
+   tags:['Insured','Free Quotes'],postedAt:'2026-02-25',featured:false,
+   reviews:[
+     {id:'r17',author:'Amy V.',rating:5,quality:5,punctuality:5,communication:5,value:5,
+      comment:'Our backyard is now the envy of the neighbourhood! The design process was collaborative and fun.',
+      date:'2026-03-22',verified:true,helpful:17,voted:false,response:'Thanks Amy, it was such a great project to be part of!'},
+     {id:'r18',author:'Ben M.',rating:5,quality:5,punctuality:4,communication:5,value:5,
+      comment:'Professional design process, flawless execution. The irrigation system alone is worth it.',
+      date:'2026-03-05',verified:true,helpful:4,voted:false,response:null},
+   ],postedAt:'2026-02-25'},
+
+  {id:'10',name:'FixAll Handyman',trade:'handyman',location:'Adelaide',
+   description:'No job too small! Furniture assembly, fence repairs, gutter cleaning, painting touch-ups, and general maintenance. Reliable, punctual, and affordable.',
+   phone:'0401 234 567',email:'fix@fixallhandyman.com',website:'',
+   yearsExp:6,rating:4.3,reviewCount:1,verified:false,responseRate:80,completedJobs:52,
+   tags:['Insured','Free Quotes','Senior Discount'],postedAt:'2026-03-01',featured:false,
+   reviews:[
+     {id:'r19',author:'Claire J.',rating:4,quality:4,punctuality:4,communication:4,value:5,
+      comment:'Assembled all our flat-pack furniture in a few hours. Friendly and great value.',
+      date:'2026-03-14',verified:false,helpful:2,voted:false,response:null},
+   ],postedAt:'2026-03-01'},
+];
+
+const SEED_JOBS = [
+  {id:'j1',title:'Burst pipe under kitchen sink',trade:'plumber',location:'Sydney',description:'Woke up to water pooling under the kitchen sink. Need someone urgently to assess and fix. Possibly a cracked pipe joint.',urgency:'emergency',budget:'open',customerName:'Michael T.',postedAt:'2026-04-11',status:'open',quotes:[
+    {id:'q1',contractorId:'1',contractorName:'Blue River Plumbing',price:180,eta:'Within 1 hour',message:'We can be there in 45 mins. Emergency call-out applies but we will waive if the repair is over $200.',rating:4.8,postedAt:'2026-04-11'},
+    {id:'q2',contractorId:'11',contractorName:'FlowPro Plumbing',price:220,eta:'Within 2 hours',message:'Available now. Will bring all pipe fittings on the van.',rating:4.4,postedAt:'2026-04-11'},
+  ]},
+  {id:'j2',title:'Full bathroom electrical fit-out',trade:'electrician',location:'Melbourne',description:'New bathroom renovation needs complete electrical including exhaust fan, heat lamp, shaver points, and LED downlights. Approximately 8 light points.',urgency:'week',budget:'$600-$900',customerName:'Sandra L.',postedAt:'2026-04-10',status:'quoted',quotes:[
+    {id:'q3',contractorId:'2',contractorName:'Watts Electrical Services',price:750,eta:'Available Thursday',message:'Happy to take this on. Will include all cabling and installation to AS/NZS 3000 standard.',rating:4.9,postedAt:'2026-04-10'},
+  ]},
+  {id:'j3',title:'Backyard decking — approx 40sqm',trade:'carpenter',location:'Brisbane',description:'Want a hardwood deck off the back of the house, roughly 8x5m. Need posts, bearers, joists and decking boards. Would prefer spotted gum or blackbutt.',urgency:'flexible',budget:'$5,000-$8,000',customerName:'Tony R.',postedAt:'2026-04-08',status:'open',quotes:[]},
+  {id:'j4',title:'Exterior house repaint',trade:'painter',location:'Adelaide',description:'Two-storey weatherboard home, last painted about 10 years ago. Needs sanding, priming, and two coats. Approx 280sqm external surface area.',urgency:'week',budget:'$3,000-$5,000',customerName:'Helen B.',postedAt:'2026-04-09',status:'hired',quotes:[
+    {id:'q4',contractorId:'5',contractorName:'PrecisionPaint Pros',price:4200,eta:'Start Monday',message:'We can start Monday with a crew of 3. Weather-proof Dulux Weathershield included.',rating:4.5,postedAt:'2026-04-09'},
+  ]},
+  {id:'j5',title:'Split system installation x2',trade:'hvac',location:'Sydney',description:'Need two 3.5kW split systems installed in bedrooms. Units already purchased (Daikin). Just need certified installation and commissioning.',urgency:'today',budget:'$300-$500',customerName:'Jin P.',postedAt:'2026-04-11',status:'open',quotes:[]},
+];
+
+// ═══════════════════════════════════
+//  STORAGE
+// ═══════════════════════════════════
+function getContractors() { try{return JSON.parse(localStorage.getItem('tf_contractors')||'[]');}catch{return [];} }
+function saveContractors(a) { localStorage.setItem('tf_contractors',JSON.stringify(a)); }
+function getJobs() { try{return JSON.parse(localStorage.getItem('tf_jobs')||'[]');}catch{return [];} }
+function saveJobs(a) { localStorage.setItem('tf_jobs',JSON.stringify(a)); }
+
+function seed() {
+  if(!localStorage.getItem('tf_contractors')) saveContractors(SEED_CONTRACTORS);
+  if(!localStorage.getItem('tf_jobs')) saveJobs(SEED_JOBS);
+}
+
+function addContractor(o) { const a=getContractors(); a.unshift(o); saveContractors(a); }
+function addJob(o) { const a=getJobs(); a.unshift(o); saveJobs(a); }
+function addQuote(jobId,quote) {
+  const a=getJobs(); const i=a.findIndex(j=>j.id===jobId);
+  if(i===-1)return; a[i].quotes=a[i].quotes||[]; a[i].quotes.push(quote);
+  if(a[i].status==='open') a[i].status='quoted';
+  saveJobs(a);
+}
+function hireContractor(jobId,quoteId) {
+  const a=getJobs(); const i=a.findIndex(j=>j.id===jobId);
+  if(i===-1)return; a[i].status='hired'; a[i].hiredQuoteId=quoteId; saveJobs(a);
+}
+function markCompleted(jobId) {
+  const a=getJobs(); const i=a.findIndex(j=>j.id===jobId);
+  if(i===-1)return; a[i].status='completed'; saveJobs(a);
+}
+function addReview(contractorId,review) {
+  const a=getContractors(); const i=a.findIndex(c=>c.id===contractorId);
+  if(i===-1)return;
+  a[i].reviews=a[i].reviews||[]; a[i].reviews.unshift(review);
+  // recalc rating
+  const ratings=a[i].reviews.map(r=>r.rating);
+  a[i].rating=Math.round((ratings.reduce((x,y)=>x+y,0)/ratings.length)*10)/10;
+  a[i].reviewCount=ratings.length;
+  saveContractors(a);
+}
+function voteHelpful(contractorId,reviewId) {
+  const a=getContractors(); const ci=a.findIndex(c=>c.id===contractorId);
+  if(ci===-1)return;
+  const ri=a[ci].reviews.findIndex(r=>r.id===reviewId);
+  if(ri===-1)return;
+  a[ci].reviews[ri].helpful=(a[ci].reviews[ri].helpful||0)+1;
+  a[ci].reviews[ri].voted=true;
+  saveContractors(a);
+  return a[ci].reviews[ri];
+}
+
+// ═══════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════
+function tradeInfo(id){return TRADES.find(t=>t.id===id)||{label:id,icon:'🔧',color:'#475569'};}
+function avatarColor(n){let h=0;for(let i=0;i<n.length;i++)h=n.charCodeAt(i)+((h<<5)-h);const c=['#1E40AF','#7C3AED','#B45309','#0891B2','#065F46','#BE185D','#1D4ED8','#92400E'];return c[Math.abs(h)%c.length];}
+function initials(n){return n.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmtDate(iso){if(!iso)return'';const d=new Date(iso);return d.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});}
+function fmtRelDate(iso){
+  if(!iso)return'';
+  const diff=Date.now()-new Date(iso);
+  const mins=Math.floor(diff/60000),hrs=Math.floor(diff/3600000),days=Math.floor(diff/86400000);
+  if(mins<2)return'just now';if(hrs<1)return`${mins}m ago`;if(days<1)return`${hrs}h ago`;if(days<30)return`${days}d ago`;
+  return fmtDate(iso);
+}
+
+function renderStarsFull(r,size=''){
+  const n=Math.round(r*2)/2; let s='<span class="stars-display">';
+  for(let i=1;i<=5;i++){
+    if(i<=n) s+=`<span class="star-f ${size}">★</span>`;
+    else if(i-0.5===n) s+=`<span class="star-h ${size}">★</span>`;
+    else s+=`<span class="star-e ${size}">★</span>`;
+  }
+  return s+'</span>';
+}
+
+function urgencyInfo(u){
+  const m={emergency:{label:'🚨 Emergency',cls:'urg-emergency'},today:{label:'⚡ Today',cls:'urg-today'},week:{label:'📅 This Week',cls:'urg-week'},flexible:{label:'🌿 Flexible',cls:'urg-flexible'}};
+  return m[u]||m.flexible;
+}
+
+// ═══════════════════════════════════
+//  ROUTER
+// ═══════════════════════════════════
+function navigate(hash){window.location.hash=hash;}
+function getHashParts(){
+  const full=window.location.hash;
+  const [path,qs]=full.split('?');
+  const params={};
+  if(qs)qs.split('&').forEach(p=>{const[k,v]=p.split('=');params[decodeURIComponent(k)]=decodeURIComponent(v||'');});
+  return{path,params};
+}
+
+let filtersState={trades:[],location:'',minRating:0,sort:'featured'};
+
+function router(){
+  const{path,params}=getHashParts();
+  if(params.trade&&!filtersState.trades.includes(params.trade))filtersState.trades=[params.trade];
+  if(params.location&&!filtersState.location)filtersState.location=params.location;
+  closeModal();
+  if(!path||path==='#/'||path==='#')renderHome();
+  else if(path==='#/listings')renderListings();
+  else if(path==='#/post')renderPost();
+  else if(path==='#/request')renderJobRequest();
+  else if(path==='#/jobs')renderJobsBoard();
+  else renderHome();
+}
+window.addEventListener('hashchange',router);
+
+// ═══════════════════════════════════
+//  HOME
+// ═══════════════════════════════════
+function renderHome(){
+  const total=getContractors().length;
+  const jobs=getJobs();
+  const openJobs=jobs.filter(j=>j.status==='open').length;
+  document.getElementById('app').innerHTML=`
+    <div class="hero">
+      <div class="container">
+        <h1>Find Trusted <span>Local Contractors</span></h1>
+        <p>Search verified tradespeople, read real reviews, or post a job and get quotes.</p>
+        <div class="hero-tabs">
+          <div class="hero-tab active" id="tab-find" onclick="switchHeroTab('find')">🔍 Find a Contractor</div>
+          <div class="hero-tab" id="tab-job" onclick="switchHeroTab('job')">📋 Post a Job</div>
+        </div>
+        <div id="hero-find-panel">
+          <div class="hero-search">
+            <select id="hs-trade" aria-label="Trade type">
+              <option value="">All Trades</option>
+              ${TRADES.map(t=>`<option value="${t.id}">${t.icon} ${t.label}</option>`).join('')}
+            </select>
+            <input type="text" id="hs-location" placeholder="📍 Suburb or city..." />
+            <button onclick="doHeroSearch()">Search</button>
+          </div>
+        </div>
+        <div id="hero-job-panel" style="display:none;max-width:680px;margin:0 auto;">
+          <div class="hero-search">
+            <select id="hj-trade">
+              <option value="">Select trade...</option>
+              ${TRADES.map(t=>`<option value="${t.id}">${t.icon} ${t.label}</option>`).join('')}
+            </select>
+            <input type="text" id="hj-location" placeholder="📍 Your location..." />
+            <button onclick="doHeroJob()">Post Job</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="section">
+        <div class="section-title">Browse by Trade</div>
+        <div class="section-sub">Click a category to browse available contractors</div>
+        <div class="trade-grid">
+          ${TRADES.map(t=>`<div class="trade-card" onclick="navigate('#/listings?trade=${t.id}')"><span class="icon">${t.icon}</span><span class="label">${t.label}</span></div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat"><div class="num">${total}+</div><div class="label">Contractors Listed</div></div>
+      <div class="stat"><div class="num">${openJobs}</div><div class="label">Open Jobs</div></div>
+      <div class="stat"><div class="num">100%</div><div class="label">Free to Use</div></div>
+      <div class="stat"><div class="num">24/7</div><div class="label">Listings Available</div></div>
+    </div>
+
+    <div class="container">
+      <div class="section">
+        <div class="section-title">How It Works</div>
+        <div class="section-sub">Two ways to connect with great tradespeople</div>
+        <div class="how-grid">
+          <div class="how-step"><div class="num">1</div><h3>Search or Post</h3><p>Browse contractor profiles or post a job to receive quotes from multiple tradespeople.</p></div>
+          <div class="how-step"><div class="num">2</div><h3>Compare & Choose</h3><p>Read verified reviews, compare multi-dimension ratings, and review quotes side by side.</p></div>
+          <div class="how-step"><div class="num">3</div><h3>Hire with Confidence</h3><p>Accept a quote or contact directly. Track your job status from open through to completed.</p></div>
+          <div class="how-step"><div class="num">4</div><h3>Rate & Review</h3><p>After the job, leave a verified review rating quality, punctuality, communication, and value.</p></div>
+        </div>
+      </div>
+    </div>
+
+    ${openJobs>0?`
+    <div style="background:var(--white);border-top:1px solid var(--border);padding:3rem 0;">
+      <div class="container">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+          <div><div class="section-title" style="margin-bottom:.2rem;">Open Jobs</div><div style="color:var(--muted);font-size:.9rem;">${openJobs} jobs waiting for quotes</div></div>
+          <a class="btn btn-outline btn-sm" onclick="navigate('#/jobs')">View All Jobs →</a>
+        </div>
+        <div>${getJobs().filter(j=>j.status==='open').slice(0,3).map(j=>renderJobCardMini(j)).join('')}</div>
+      </div>
+    </div>`:''}
+
+    <div style="background:linear-gradient(135deg,#1e3a8a,#1e40af);padding:3rem 0;">
+      <div class="container" style="text-align:center;color:#fff;">
+        <div style="font-size:1.5rem;font-weight:800;margin-bottom:.5rem;">Are you a contractor?</div>
+        <p style="opacity:.85;margin:.5rem 0 1.5rem;">Post your listing free and start receiving job leads today.</p>
+        <a class="btn btn-orange" onclick="navigate('#/post')" style="font-size:1rem;padding:.8rem 2rem;">Post Your Listing Free →</a>
+      </div>
+    </div>
+
+    <footer>
+      <p>© 2026 TradeFind — Connecting communities with trusted tradespeople.</p>
+      <p style="margin-top:.5rem;">
+        <a onclick="navigate('#/')">Home</a>
+        <a onclick="navigate('#/listings')">Browse</a>
+        <a onclick="navigate('#/jobs')">Jobs Board</a>
+        <a onclick="navigate('#/post')">Post Ad</a>
+      </p>
+    </footer>
+  `;
+}
+
+function switchHeroTab(t){
+  document.getElementById('tab-find').classList.toggle('active',t==='find');
+  document.getElementById('tab-job').classList.toggle('active',t==='job');
+  document.getElementById('hero-find-panel').style.display=t==='find'?'block':'none';
+  document.getElementById('hero-job-panel').style.display=t==='job'?'block':'none';
+}
+function doHeroSearch(){
+  const trade=document.getElementById('hs-trade').value;
+  const loc=document.getElementById('hs-location').value.trim();
+  filtersState={trades:trade?[trade]:[],location:loc,minRating:0,sort:'featured'};
+  navigate('#/listings'+(trade||loc?'?'+(trade?'trade='+trade:'')+(trade&&loc?'&':'')+(loc?'location='+encodeURIComponent(loc):''):''));
+}
+function doHeroJob(){
+  const trade=document.getElementById('hj-trade').value;
+  const loc=document.getElementById('hj-location').value.trim();
+  navigate('#/request'+(trade?'?trade='+trade:'')+(trade&&loc?'&':'')+(loc&&!trade?'?location='+encodeURIComponent(loc):loc?'location='+encodeURIComponent(loc):''));
+}
+
+function renderJobCardMini(j){
+  const t=tradeInfo(j.trade); const u=urgencyInfo(j.urgency);
+  return`<div class="job-card" onclick="navigate('#/jobs')" style="cursor:pointer;">
+    <div class="job-header">
+      <div><div class="job-title">${esc(j.title)}</div>
+        <div style="display:flex;gap:.5rem;align-items:center;margin-top:.3rem;">
+          <span class="trade-badge" style="background:${t.color}">${t.icon} ${t.label}</span>
+          <span class="urgency-tag ${u.cls}">${u.label}</span>
+        </div>
+      </div>
+      <span class="job-status status-${j.status}">${j.status}</span>
+    </div>
+    <div class="job-desc" style="-webkit-line-clamp:2;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;">${esc(j.description)}</div>
+    <div class="job-meta"><span>📍 ${esc(j.location)}</span><span>💰 ${esc(j.budget||'Open')}</span><span>🕐 ${fmtRelDate(j.postedAt)}</span></div>
+  </div>`;
+}
+
+// ═══════════════════════════════════
+//  LISTINGS
+// ═══════════════════════════════════
+function renderListings(){
+  const{params}=getHashParts();
+  if(params.trade&&!filtersState.trades.includes(params.trade))filtersState.trades=[params.trade];
+  if(params.location&&!filtersState.location)filtersState.location=params.location;
+  let all=getContractors();
+  let filtered=applyFilters(all);
+  const cardsHtml=filtered.length===0
+    ?`<div class="empty-state" style="grid-column:1/-1"><div class="big-icon">🔍</div><h3>No contractors found</h3><p>Try adjusting your filters or <a href="#/post" onclick="navigate('#/post');return false;">post the first listing</a> in this category.</p></div>`
+    :filtered.map(c=>renderCard(c)).join('');
+
+  document.getElementById('app').innerHTML=`
+    <div style="position:relative;">
+      <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+      <aside class="sidebar" id="sidebar">
+        <button class="modal-close" style="top:.5rem;right:.5rem;" onclick="closeSidebar()">✕</button>
+        <h3>Filters</h3>
+        <div class="filter-group">
+          <label class="group-label">Trade</label>
+          <div class="checkbox-list">
+            ${TRADES.map(t=>`<label><input type="checkbox" value="${t.id}" ${filtersState.trades.includes(t.id)?'checked':''} onchange="onTradeFilter(this)"/>${t.icon} ${t.label}</label>`).join('')}
+          </div>
+        </div>
+        <div class="filter-group">
+          <label class="group-label">Location</label>
+          <input type="text" id="loc-filter" placeholder="Suburb or city..." value="${esc(filtersState.location)}" oninput="onLocFilter(this.value)"/>
+        </div>
+        <div class="filter-group">
+          <label class="group-label">Min Rating: <strong id="rating-val">${filtersState.minRating}</strong>★</label>
+          <input type="range" min="0" max="5" step="0.5" value="${filtersState.minRating}" oninput="onRatingFilter(this.value)"/>
+          <div class="range-labels"><span>Any</span><span>5★</span></div>
+        </div>
+        <div class="filter-group">
+          <label class="group-label">Attributes</label>
+          <div class="checkbox-list">
+            <label><input type="checkbox" id="f-verified" ${filtersState.verified?'checked':''} onchange="onVerifiedFilter(this.checked)"/> ✓ Verified Only</label>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" style="width:100%;" onclick="clearFilters()">Clear Filters</button>
+      </aside>
+      <div class="container">
+        <div class="listings-layout">
+          <div style="width:260px;flex-shrink:0;display:none;" class="sidebar-placeholder"></div>
+          <div class="listings-main">
+            <button class="filter-toggle" onclick="openSidebar()">☰ Filters ${getActiveFilterCount()>0?`<span style="background:var(--orange);color:#fff;border-radius:99px;padding:.1rem .45rem;font-size:.7rem;">${getActiveFilterCount()}</span>`:''}</button>
+            <div class="results-bar">
+              <span class="results-count">Showing <strong>${filtered.length}</strong> of <strong>${all.length}</strong> contractors</span>
+              <select class="sort-select" onchange="onSortChange(this.value)">
+                <option value="featured" ${filtersState.sort==='featured'?'selected':''}>Featured First</option>
+                <option value="rating"   ${filtersState.sort==='rating'?'selected':''}>Highest Rated</option>
+                <option value="reviews"  ${filtersState.sort==='reviews'?'selected':''}>Most Reviewed</option>
+                <option value="jobs"     ${filtersState.sort==='jobs'?'selected':''}>Most Jobs Done</option>
+                <option value="newest"   ${filtersState.sort==='newest'?'selected':''}>Newest</option>
+              </select>
+            </div>
+            <div class="cards-grid" id="cards-grid">${cardsHtml}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  if(window.innerWidth>768){
+    const s=document.getElementById('sidebar');
+    const p=document.querySelector('.sidebar-placeholder');
+    s.style.cssText='position:sticky;top:72px;left:0;height:auto;';
+    if(p)p.style.display='block';
+  }
+}
+
+function applyFilters(all){
+  let f=all.filter(c=>{
+    const tOk=filtersState.trades.length===0||filtersState.trades.includes(c.trade);
+    const lOk=!filtersState.location||c.location.toLowerCase().includes(filtersState.location.toLowerCase());
+    const rOk=(c.rating||0)>=filtersState.minRating;
+    const vOk=!filtersState.verified||c.verified;
+    return tOk&&lOk&&rOk&&vOk;
+  });
+  if(filtersState.sort==='featured') f.sort((a,b)=>(b.featured?1:0)-(a.featured?1:0)||new Date(b.postedAt)-new Date(a.postedAt));
+  else if(filtersState.sort==='rating') f.sort((a,b)=>(b.rating||0)-(a.rating||0));
+  else if(filtersState.sort==='reviews') f.sort((a,b)=>(b.reviewCount||0)-(a.reviewCount||0));
+  else if(filtersState.sort==='jobs') f.sort((a,b)=>(b.completedJobs||0)-(a.completedJobs||0));
+  else if(filtersState.sort==='newest') f.sort((a,b)=>new Date(b.postedAt)-new Date(a.postedAt));
+  return f;
+}
+
+function getActiveFilterCount(){return(filtersState.trades.length>0?1:0)+(filtersState.location?1:0)+(filtersState.minRating>0?1:0)+(filtersState.verified?1:0);}
+function onTradeFilter(el){if(el.checked){if(!filtersState.trades.includes(el.value))filtersState.trades.push(el.value);}else{filtersState.trades=filtersState.trades.filter(t=>t!==el.value);}refreshCards();}
+function onLocFilter(v){filtersState.location=v;refreshCards();}
+function onRatingFilter(v){filtersState.minRating=parseFloat(v);const l=document.getElementById('rating-val');if(l)l.textContent=v;refreshCards();}
+function onSortChange(v){filtersState.sort=v;refreshCards();}
+function onVerifiedFilter(v){filtersState.verified=v;refreshCards();}
+function clearFilters(){filtersState={trades:[],location:'',minRating:0,sort:'featured',verified:false};renderListings();}
+function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('sidebar-overlay').classList.add('open');}
+function closeSidebar(){const s=document.getElementById('sidebar');const o=document.getElementById('sidebar-overlay');if(s)s.classList.remove('open');if(o)o.classList.remove('open');}
+
+function refreshCards(){
+  const filtered=applyFilters(getContractors());
+  const g=document.getElementById('cards-grid');
+  if(!g)return;
+  g.innerHTML=filtered.length===0
+    ?`<div class="empty-state" style="grid-column:1/-1"><div class="big-icon">🔍</div><h3>No contractors found</h3></div>`
+    :filtered.map(c=>renderCard(c)).join('');
+  const rc=document.querySelector('.results-count');
+  if(rc)rc.innerHTML=`Showing <strong>${filtered.length}</strong> of <strong>${getContractors().length}</strong> contractors`;
+}
+
+function renderCard(c){
+  const t=tradeInfo(c.trade);
+  const bg=avatarColor(c.name);
+  const ini=initials(c.name);
+  const tags=(c.tags||[]).slice(0,3).map(tag=>`<span class="tag">${esc(tag)}</span>`).join('');
+  return`
+    <div class="card ${c.featured?'card-featured':''}">
+      ${c.featured?'<div class="featured-badge">⭐ Featured</div>':''}
+      <div class="card-header">
+        <div class="avatar" style="background:${bg}">${esc(ini)}${c.verified?'<div class="avatar-verified">✓</div>':''}</div>
+        <div class="card-title">
+          <h3>${esc(c.name)}</h3>
+          <span class="trade-badge" style="background:${t.color}">${t.icon} ${t.label}</span>
+        </div>
+      </div>
+      <div class="card-meta">
+        <span>📍 ${esc(c.location)}</span>
+        <span style="margin-left:auto;">${renderStarsFull(c.rating||0)} <span style="color:var(--muted);font-size:.8rem;margin-left:.2rem;">${c.rating||'—'} (${c.reviewCount||0})</span></span>
+      </div>
+      <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+        ${c.completedJobs?`<span class="tag tag-green">✓ ${c.completedJobs} jobs done</span>`:''}
+        ${c.responseRate?`<span class="response-pill">⚡ ${c.responseRate}% response</span>`:''}
+      </div>
+      <div class="card-desc">${esc(c.description)}</div>
+      ${tags?`<div class="tags">${tags}</div>`:''}
+      <div class="card-actions">
+        <button class="btn btn-outline btn-sm" onclick="openModal('${c.id}')">View Profile</button>
+        <a class="btn btn-primary btn-sm" href="tel:${esc(c.phone)}">📞 Call</a>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════
+//  MODAL — CONTRACTOR PROFILE
+// ═══════════════════════════════════
+let currentModalId=null;
+let starRatings={overall:0,quality:0,punctuality:0,communication:0,value:0};
+
+function openModal(id){
+  currentModalId=id;
+  const c=getContractors().find(x=>x.id===id);
+  if(!c)return;
+  const t=tradeInfo(c.trade);
+  const bg=avatarColor(c.name);
+  const ini=initials(c.name);
+  const reviews=c.reviews||[];
+
+  // Rating distribution
+  const dist=[5,4,3,2,1].map(star=>{
+    const cnt=reviews.filter(r=>Math.round(r.rating)===star).length;
+    const pct=reviews.length?Math.round(cnt/reviews.length*100):0;
+    return{star,cnt,pct};
+  });
+
+  // Dimension averages
+  const dims=['quality','punctuality','communication','value'];
+  const dimAvgs={};
+  dims.forEach(d=>{
+    const vals=reviews.filter(r=>r[d]).map(r=>r[d]);
+    dimAvgs[d]=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10)/10:null;
+  });
+
+  const reviewsHtml=reviews.length===0
+    ?`<p style="color:var(--muted);font-size:.875rem;">No reviews yet. Be the first!</p>`
+    :reviews.map(r=>renderReviewCard(r,id)).join('');
+
+  const overlay=document.createElement('div');
+  overlay.className='modal-overlay';
+  overlay.id='modal-overlay';
+  overlay.innerHTML=`
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <div class="avatar" style="background:${bg};width:64px;height:64px;font-size:1.4rem;">${esc(ini)}${c.verified?'<div class="avatar-verified" style="width:22px;height:22px;font-size:.8rem;">✓</div>':''}</div>
+        <div style="flex:1;">
+          <div class="modal-name">${esc(c.name)}${c.verified?` <span style="background:#dcfce7;color:#15803d;font-size:.75rem;font-weight:700;padding:.15rem .4rem;border-radius:4px;vertical-align:middle;">✓ Verified</span>`:''}</div>
+          <div class="modal-meta">
+            <span class="trade-badge" style="background:${t.color}">${t.icon} ${t.label}</span>
+            <span style="color:var(--muted);font-size:.875rem;">📍 ${esc(c.location)}</span>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closeModal()" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="contact-bar">
+          <a class="btn btn-primary btn-sm" href="tel:${esc(c.phone)}">📞 ${esc(c.phone)}</a>
+          <a class="btn btn-ghost btn-sm" href="mailto:${esc(c.email)}">✉️ Email</a>
+          ${c.website?`<a class="btn btn-ghost btn-sm" href="https://${esc(c.website)}" target="_blank" rel="noopener">🌐 Website</a>`:''}
+          <button class="btn btn-orange btn-sm" onclick="closeModal();navigate('#/request?contractor=${c.id}')">📋 Request Quote</button>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-item"><div class="val">${c.yearsExp||'—'}</div><div class="lbl">Yrs Exp</div></div>
+          <div class="stat-item"><div class="val">${c.completedJobs||0}</div><div class="lbl">Jobs Done</div></div>
+          <div class="stat-item"><div class="val">${c.responseRate||'—'}%</div><div class="lbl">Response</div></div>
+          <div class="stat-item"><div class="val">${reviews.length}</div><div class="lbl">Reviews</div></div>
+        </div>
+
+        <p style="font-size:.9rem;line-height:1.7;color:var(--muted);">${esc(c.description)}</p>
+        ${c.tags&&c.tags.length?`<div class="tags" style="margin-top:.75rem;">${c.tags.map(tag=>`<span class="tag">${esc(tag)}</span>`).join('')}</div>`:''}
+
+        ${reviews.length>0?`
+        <div class="modal-section-title">Ratings & Reviews</div>
+        <div class="rating-overview">
+          <div class="rating-big">
+            <div class="score">${c.rating||'—'}</div>
+            <div>${renderStarsFull(c.rating||0)}</div>
+            <div class="count">${reviews.length} review${reviews.length!==1?'s':''}</div>
+          </div>
+          <div class="rating-bars">
+            ${dist.map(d=>`
+              <div class="rating-bar-row">
+                <span class="bar-label">${d.star}</span>
+                <div class="rating-bar-track"><div class="rating-bar-fill" style="width:${d.pct}%"></div></div>
+                <span class="rating-bar-count">${d.cnt}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        <div class="dim-ratings">
+          ${dims.map(d=>`
+            <div class="dim-row">
+              <span class="dim-name">${d.charAt(0).toUpperCase()+d.slice(1)}</span>
+              <span class="dim-score">${dimAvgs[d]!==null?`${renderStarsFull(dimAvgs[d])} <strong>${dimAvgs[d]}</strong>`:'<span style="color:var(--muted);">—</span>'}</span>
+            </div>
+          `).join('')}
+        </div>
+        `:`<div class="modal-section-title">Reviews</div>`}
+
+        <div id="modal-reviews">${reviewsHtml}</div>
+
+        <div class="modal-section-title">Leave a Review</div>
+        <div class="review-form">
+          <div class="form-row" id="rf-name-row">
+            <label>Your Name</label>
+            <input type="text" id="rf-name" placeholder="e.g. John S." />
+          </div>
+          <div class="form-row">
+            <label>Overall Rating</label>
+            <div class="star-picker" id="star-picker-overall">
+              ${[1,2,3,4,5].map(n=>`<span onclick="setStarDim('overall',${n})" title="${n} star${n>1?'s':''}">★</span>`).join('')}
+            </div>
+          </div>
+          <div class="form-row"><label>Rate by Dimension</label></div>
+          <div class="dim-pickers">
+            ${['quality','punctuality','communication','value'].map(d=>`
+              <div class="dim-picker-row">
+                <label>${d.charAt(0).toUpperCase()+d.slice(1)}</label>
+                <div class="mini-stars" id="star-picker-${d}">
+                  ${[1,2,3,4,5].map(n=>`<span onclick="setStarDim('${d}',${n})">★</span>`).join('')}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <div class="form-row" id="rf-comment-row">
+            <label>Comment</label>
+            <textarea id="rf-comment" rows="3" placeholder="Share your experience..."></textarea>
+          </div>
+          <button class="btn btn-green btn-sm" onclick="submitReview('${c.id}')">Submit Review</button>
+          <p style="font-size:.75rem;color:var(--muted);margin-top:.5rem;">Reviews from verified job completions are marked with a badge.</p>
+        </div>
+        <p style="font-size:.75rem;color:var(--muted);margin-top:.75rem;">Listed on ${fmtDate(c.postedAt)}</p>
+      </div>
+    </div>
+  `;
+  document.getElementById('modal-root').appendChild(overlay);
+  document.body.style.overflow='hidden';
+  overlay.addEventListener('click',e=>{if(e.target===overlay)closeModal();});
+  starRatings={overall:0,quality:0,punctuality:0,communication:0,value:0};
+}
+
+function renderReviewCard(r,contractorId){
+  const bg=avatarColor(r.author);
+  const ini=r.author.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+  const dimTags=['quality','punctuality','communication','value']
+    .filter(d=>r[d])
+    .map(d=>`<span class="review-dim-tag">${d.charAt(0).toUpperCase()+d.slice(1)}: ${r[d]}★</span>`)
+    .join('');
+  return`
+    <div class="review-card" id="rc-${esc(r.id)}">
+      <div class="review-header">
+        <div class="review-author-wrap">
+          <div class="review-avatar" style="background:${bg}">${esc(ini)}</div>
+          <div>
+            <div class="review-author">${esc(r.author)}</div>
+            <div style="display:flex;gap:.4rem;align-items:center;margin-top:.1rem;">
+              ${renderStarsFull(r.rating)}
+              <span class="review-date">${fmtDate(r.date)}</span>
+              ${r.verified?'<span class="verified-badge">✓ Verified Job</span>':''}
+            </div>
+          </div>
+        </div>
+      </div>
+      ${dimTags?`<div class="review-dims">${dimTags}</div>`:''}
+      <div class="review-comment">${esc(r.comment)}</div>
+      ${r.response?`<div class="contractor-response"><div class="resp-label">Response from contractor</div><p>${esc(r.response)}</p></div>`:''}
+      <div class="review-footer">
+        <button class="helpful-btn ${r.voted?'voted':''}" onclick="onHelpfulVote('${contractorId}','${r.id}',this)" ${r.voted?'disabled':''}>
+          👍 Helpful (${r.helpful||0})
+        </button>
+        <span style="font-size:.75rem;color:var(--muted);">${r.helpful||0} found this helpful</span>
+      </div>
+    </div>
+  `;
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+function closeModal(){
+  const o=document.getElementById('modal-overlay');
+  if(o)o.remove();
+  document.body.style.overflow='';
+  currentModalId=null;
+  starRatings={overall:0,quality:0,punctuality:0,communication:0,value:0};
+}
+
+function setStarDim(dim,n){
+  starRatings[dim]=n;
+  const picker=document.getElementById('star-picker-'+dim);
+  if(!picker)return;
+  picker.querySelectorAll('span').forEach((s,i)=>s.classList.toggle('active',i<n));
+}
+
+function onHelpfulVote(contractorId,reviewId,btn){
+  const updated=voteHelpful(contractorId,reviewId);
+  if(!updated)return;
+  btn.classList.add('voted');
+  btn.disabled=true;
+  btn.innerHTML=`👍 Helpful (${updated.helpful})`;
+  btn.closest('.review-footer').querySelector('span').textContent=`${updated.helpful} found this helpful`;
+}
+
+function submitReview(id){
+  const nameEl=document.getElementById('rf-name');
+  const commentEl=document.getElementById('rf-comment');
+  const nameRow=document.getElementById('rf-name-row');
+  const commentRow=document.getElementById('rf-comment-row');
+  let valid=true;
+  if(!nameEl.value.trim()){nameRow.classList.add('error');valid=false;}else nameRow.classList.remove('error');
+  if(!commentEl.value.trim()){commentRow.classList.add('error');valid=false;}else commentRow.classList.remove('error');
+  if(starRatings.overall===0){showToast('Please select an overall star rating.','error');return;}
+  if(!valid)return;
+
+  const review={
+    id:'r'+Date.now(),
+    author:nameEl.value.trim(),
+    rating:starRatings.overall,
+    quality:starRatings.quality||null,
+    punctuality:starRatings.punctuality||null,
+    communication:starRatings.communication||null,
+    value:starRatings.value||null,
+    comment:commentEl.value.trim(),
+    date:new Date().toISOString().split('T')[0],
+    verified:false,helpful:0,voted:false,response:null,
+  };
+  addReview(id,review);
+  showToast('Review submitted — thank you!','success');
+  closeModal();
+  openModal(id);
+}
+
+// ═══════════════════════════════════
+//  JOB REQUEST FORM
+// ═══════════════════════════════════
+let selectedUrgency='flexible';
+
+function renderJobRequest(){
+  const{params}=getHashParts();
+  document.getElementById('app').innerHTML=`
+    <div class="job-form-wrap">
+      <h2>Post a Job</h2>
+      <p class="sub" style="color:var(--muted);margin-bottom:2rem;">Describe what you need — qualified contractors will send you quotes.</p>
+
+      <div class="form-card">
+        <h3>📋 Job Details</h3>
+        <div class="form-grid">
+          <div class="form-row full" id="jf-title-row"><label>Job Title *</label><input type="text" id="jf-title" placeholder="e.g. Leaking tap in bathroom needs fixing" /></div>
+          <div class="form-row" id="jf-trade-row"><label>Trade Required *</label>
+            <select id="jf-trade">
+              <option value="">Select trade...</option>
+              ${TRADES.map(t=>`<option value="${t.id}" ${params.trade===t.id?'selected':''}>${t.icon} ${t.label}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-row" id="jf-location-row"><label>Location *</label><input type="text" id="jf-location" placeholder="Suburb or city..." value="${esc(params.location||'')}" /></div>
+          <div class="form-row full" id="jf-desc-row">
+            <label>Description * <span style="color:var(--muted);font-weight:400;">(be specific — better descriptions get better quotes)</span></label>
+            <textarea id="jf-desc" rows="4" maxlength="500" oninput="document.getElementById('jf-char').textContent=this.value.length" placeholder="Describe the problem, size of the job, any specific requirements..."></textarea>
+            <div class="char-count"><span id="jf-char">0</span>/500</div>
+          </div>
+          <div class="form-row"><label>Budget (optional)</label><input type="text" id="jf-budget" placeholder="e.g. $200-$400 or 'open'" /></div>
+          <div class="form-row" id="jf-name-row"><label>Your Name *</label><input type="text" id="jf-name" placeholder="First name + last initial" /></div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <h3>⏰ Urgency</h3>
+        <div class="urgency-grid" id="urgency-grid">
+          <div class="urgency-opt emergency" data-urgency="emergency" onclick="selectUrgency('emergency')"><span class="u-icon">🚨</span><span class="u-label">Emergency</span><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem;">Right now</div></div>
+          <div class="urgency-opt" data-urgency="today" onclick="selectUrgency('today')"><span class="u-icon">⚡</span><span class="u-label">Today</span><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem;">Within 24hrs</div></div>
+          <div class="urgency-opt" data-urgency="week" onclick="selectUrgency('week')"><span class="u-icon">📅</span><span class="u-label">This Week</span><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem;">2–7 days</div></div>
+          <div class="urgency-opt selected" data-urgency="flexible" onclick="selectUrgency('flexible')"><span class="u-icon">🌿</span><span class="u-label">Flexible</span><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem;">No rush</div></div>
+        </div>
+      </div>
+
+      <button class="btn btn-orange" style="width:100%;justify-content:center;padding:1rem;font-size:1rem;" onclick="submitJobRequest()">
+        🚀 Post Job &amp; Get Quotes
+      </button>
+    </div>
+  `;
+  selectedUrgency='flexible';
+}
+
+function selectUrgency(u){
+  selectedUrgency=u;
+  document.querySelectorAll('.urgency-opt').forEach(el=>el.classList.toggle('selected',el.dataset.urgency===u));
+}
+
+function submitJobRequest(){
+  const fields=[{id:'jf-title',row:'jf-title-row'},{id:'jf-trade',row:'jf-trade-row'},{id:'jf-location',row:'jf-location-row'},{id:'jf-desc',row:'jf-desc-row'},{id:'jf-name',row:'jf-name-row'}];
+  let valid=true;
+  fields.forEach(({id,row})=>{
+    const el=document.getElementById(id);
+    const rowEl=document.getElementById(row);
+    if(!el.value.trim()){rowEl.classList.add('error');valid=false;}else rowEl.classList.remove('error');
+  });
+  if(!valid){showToast('Please fill in all required fields.','error');return;}
+
+  const job={
+    id:'j'+Date.now(),
+    title:document.getElementById('jf-title').value.trim(),
+    trade:document.getElementById('jf-trade').value,
+    location:document.getElementById('jf-location').value.trim(),
+    description:document.getElementById('jf-desc').value.trim(),
+    budget:document.getElementById('jf-budget').value.trim()||'open',
+    urgency:selectedUrgency,
+    customerName:document.getElementById('jf-name').value.trim(),
+    postedAt:new Date().toISOString().split('T')[0],
+    status:'open',
+    quotes:[],
+  };
+  addJob(job);
+  showToast('Job posted! Contractors will send you quotes.','success');
+  setTimeout(()=>navigate('#/jobs'),500);
+}
+
+// ═══════════════════════════════════
+//  JOBS BOARD
+// ═══════════════════════════════════
+let jobsTab='open';
+
+function renderJobsBoard(){
+  const jobs=getJobs();
+  document.getElementById('app').innerHTML=`
+    <div class="jobs-layout">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+        <div><h2 style="font-size:1.75rem;font-weight:800;">Jobs Board</h2><p style="color:var(--muted);margin-top:.2rem;">Real jobs posted by customers seeking quotes</p></div>
+        <button class="btn btn-orange" onclick="navigate('#/request')">📋 Post a Job</button>
+      </div>
+
+      <div class="jobs-tabs">
+        ${['open','quoted','hired','completed'].map(s=>`<div class="jobs-tab ${jobsTab===s?'active':''}" onclick="switchJobTab('${s}')">${s.charAt(0).toUpperCase()+s.slice(1)} <span style="background:${jobsTab===s?'var(--blue)':'var(--border)'};color:${jobsTab===s?'#fff':'var(--muted)'};border-radius:99px;padding:.1rem .4rem;font-size:.72rem;font-weight:700;margin-left:.25rem;">${jobs.filter(j=>j.status===s).length}</span></div>`).join('')}
+      </div>
+
+      <div id="jobs-list">${renderJobsList(jobs)}</div>
+    </div>
+  `;
+}
+
+function switchJobTab(t){jobsTab=t;const jobs=getJobs();document.querySelectorAll('.jobs-tab').forEach(el=>el.classList.toggle('active',el.textContent.trim().toLowerCase().startsWith(t)));document.getElementById('jobs-list').innerHTML=renderJobsList(jobs);}
+
+function renderJobsList(jobs){
+  const filtered=jobs.filter(j=>j.status===jobsTab);
+  if(filtered.length===0)return`<div class="empty-state"><div class="big-icon">📋</div><h3>No ${jobsTab} jobs</h3><p>Check back later or <a onclick="navigate('#/request')">post a job</a>.</p></div>`;
+  return filtered.map(j=>renderJobCard(j)).join('');
+}
+
+function renderJobCard(j){
+  const t=tradeInfo(j.trade); const u=urgencyInfo(j.urgency);
+  const quotes=j.quotes||[];
+  const hiredQuote=j.hiredQuoteId?quotes.find(q=>q.id===j.hiredQuoteId):null;
+  return`
+    <div class="job-card">
+      <div class="job-header">
+        <div>
+          <div class="job-title">${esc(j.title)}</div>
+          <div style="display:flex;gap:.5rem;align-items:center;margin-top:.3rem;flex-wrap:wrap;">
+            <span class="trade-badge" style="background:${t.color};color:#fff;font-size:.75rem;padding:.2rem .5rem;border-radius:4px;">${t.icon} ${t.label}</span>
+            <span class="urgency-tag ${u.cls}">${u.label}</span>
+          </div>
+        </div>
+        <span class="job-status status-${j.status}">${j.status}</span>
+      </div>
+      <div class="job-meta">
+        <span>📍 ${esc(j.location)}</span>
+        <span>👤 ${esc(j.customerName)}</span>
+        ${j.budget&&j.budget!=='open'?`<span>💰 ${esc(j.budget)}</span>`:''}
+        <span>🕐 ${fmtRelDate(j.postedAt)}</span>
+      </div>
+      <div class="job-desc">${esc(j.description)}</div>
+
+      ${quotes.length>0?`
+        <div style="border-top:1px solid var(--border);padding-top:.75rem;margin-top:.25rem;">
+          <div style="font-size:.85rem;font-weight:600;margin-bottom:.6rem;">💬 ${quotes.length} Quote${quotes.length!==1?'s':''} Received</div>
+          ${quotes.map(q=>renderQuoteCard(q,j)).join('')}
+        </div>
+      `:`<div class="job-footer"><span class="quote-count">No quotes yet — <strong>be the first!</strong></span></div>`}
+
+      ${j.status==='open'||j.status==='quoted'?`<button class="btn btn-ghost btn-sm" style="margin-top:.5rem;" onclick="openQuoteModal('${j.id}')">📩 Submit a Quote</button>`:''}
+      ${j.status==='hired'&&hiredQuote?`<div style="background:#f0fdf4;border-radius:8px;padding:.75rem;margin-top:.5rem;font-size:.85rem;"><strong style="color:var(--green);">✓ Hired:</strong> ${esc(hiredQuote.contractorName)} for $${hiredQuote.price} <button class="btn btn-ghost btn-xs" style="margin-left:.5rem;" onclick="completeJob('${j.id}')">Mark Completed</button></div>`:''}
+      ${j.status==='completed'?`<div style="background:#f0fdf4;border-radius:8px;padding:.75rem;margin-top:.5rem;font-size:.85rem;color:var(--green);font-weight:600;">✓ Job completed</div>`:''}
+    </div>
+  `;
+}
+
+function renderQuoteCard(q,j){
+  const isHired=j.hiredQuoteId===q.id;
+  return`
+    <div class="quote-card ${isHired?'border-color:var(--green);':''}">
+      <div class="quote-header">
+        <div class="avatar" style="background:${avatarColor(q.contractorName)};width:36px;height:36px;font-size:.8rem;flex-shrink:0;">${initials(q.contractorName)}</div>
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:.9rem;">${esc(q.contractorName)}</div>
+          <div style="display:flex;gap:.5rem;align-items:center;">
+            ${renderStarsFull(q.rating)} <span style="font-size:.75rem;color:var(--muted);">${q.rating}</span>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div class="quote-price">$${q.price}</div>
+          <div class="quote-eta">${esc(q.eta)}</div>
+        </div>
+      </div>
+      <div class="quote-message">${esc(q.message)}</div>
+      ${isHired?`<span style="display:inline-block;background:#dcfce7;color:var(--green);font-size:.75rem;font-weight:700;padding:.2rem .6rem;border-radius:4px;">✓ Hired</span>`:''}
+      ${!isHired&&j.status!=='hired'&&j.status!=='completed'?`
+        <div class="quote-actions">
+          <button class="btn btn-green btn-sm" onclick="doHire('${j.id}','${q.id}')">✓ Accept Quote</button>
+          <button class="btn btn-outline btn-sm" onclick="openModal('${q.contractorId}')">View Profile</button>
+        </div>
+      `:''}
+    </div>
+  `;
+}
+
+function doHire(jobId,quoteId){hireContractor(jobId,quoteId);showToast('Contractor hired!','success');renderJobsBoard();}
+function completeJob(jobId){markCompleted(jobId);showToast('Job marked as completed.','success');renderJobsBoard();}
+
+// ═══════════════════════════════════
+//  QUOTE MODAL
+// ═══════════════════════════════════
+function openQuoteModal(jobId){
+  const job=getJobs().find(j=>j.id===jobId);
+  if(!job)return;
+  const overlay=document.createElement('div');
+  overlay.className='modal-overlay';
+  overlay.id='modal-overlay';
+  overlay.innerHTML=`
+    <div class="modal" style="max-width:480px;">
+      <div class="modal-header">
+        <div style="flex:1;"><div class="modal-name">Submit a Quote</div><div style="color:var(--muted);font-size:.875rem;margin-top:.25rem;">${esc(job.title)}</div></div>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row" id="qf-name-row"><label>Your Business Name *</label><input type="text" id="qf-name" placeholder="e.g. Blue River Plumbing" /></div>
+        <div class="form-row" id="qf-cid-row"><label>Contractor ID (if listed on TradeFind)</label><input type="text" id="qf-cid" placeholder="Optional — links to your profile" /></div>
+        <div style="display:flex;gap:1rem;">
+          <div class="form-row" id="qf-price-row" style="flex:1;"><label>Your Price ($) *</label><input type="number" id="qf-price" placeholder="e.g. 250" min="1" /></div>
+          <div class="form-row" style="flex:1;"><label>Availability *</label><input type="text" id="qf-eta" placeholder="e.g. Tomorrow morning" /></div>
+        </div>
+        <div class="form-row" id="qf-msg-row"><label>Message to Customer *</label><textarea id="qf-msg" rows="3" placeholder="Briefly describe your approach and why you're the right fit..."></textarea></div>
+        <button class="btn btn-orange" style="width:100%;justify-content:center;" onclick="submitQuote('${jobId}')">Send Quote</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('modal-root').appendChild(overlay);
+  document.body.style.overflow='hidden';
+  overlay.addEventListener('click',e=>{if(e.target===overlay)closeModal();});
+}
+
+function submitQuote(jobId){
+  const nameEl=document.getElementById('qf-name');
+  const priceEl=document.getElementById('qf-price');
+  const etaEl=document.getElementById('qf-eta');
+  const msgEl=document.getElementById('qf-msg');
+  let valid=true;
+  [[nameEl,'qf-name-row'],[priceEl,'qf-price-row'],[msgEl,'qf-msg-row']].forEach(([el,row])=>{
+    const r=document.getElementById(row);
+    if(!el.value.trim()){r.classList.add('error');valid=false;}else r.classList.remove('error');
+  });
+  if(!etaEl.value.trim()){showToast('Please enter your availability.','error');return;}
+  if(!valid)return;
+
+  const cidEl=document.getElementById('qf-cid');
+  const cid=cidEl.value.trim();
+  const matchedContractor=cid?getContractors().find(c=>c.id===cid):null;
+
+  const quote={
+    id:'q'+Date.now(),
+    contractorId:cid||'ext',
+    contractorName:nameEl.value.trim(),
+    price:parseFloat(priceEl.value),
+    eta:etaEl.value.trim(),
+    message:msgEl.value.trim(),
+    rating:matchedContractor?matchedContractor.rating:null,
+    postedAt:new Date().toISOString().split('T')[0],
+  };
+  addQuote(jobId,quote);
+  showToast('Quote submitted!','success');
+  closeModal();
+  renderJobsBoard();
+}
+
+// ═══════════════════════════════════
+//  POST AD FORM
+// ═══════════════════════════════════
+function renderPost(){
+  document.getElementById('app').innerHTML=`
+    <div class="post-form-wrap">
+      <h2>Post Your Listing</h2>
+      <p class="sub">Reach thousands of potential customers — completely free.</p>
+      <div class="form-card">
+        <h3>📋 Business Information</h3>
+        <div class="form-grid">
+          <div class="form-row full" id="pf-name-row"><label>Business / Your Name *</label><input type="text" id="pf-name" placeholder="e.g. Smith Plumbing" /></div>
+          <div class="form-row" id="pf-trade-row"><label>Trade *</label>
+            <select id="pf-trade"><option value="">Select trade...</option>${TRADES.map(t=>`<option value="${t.id}">${t.icon} ${t.label}</option>`).join('')}</select>
+          </div>
+          <div class="form-row" id="pf-location-row"><label>Location / City *</label><input type="text" id="pf-location" placeholder="e.g. Sydney" /></div>
+          <div class="form-row" id="pf-phone-row"><label>Phone *</label><input type="tel" id="pf-phone" placeholder="04XX XXX XXX" /></div>
+          <div class="form-row" id="pf-email-row"><label>Email *</label><input type="email" id="pf-email" placeholder="you@example.com" /></div>
+          <div class="form-row"><label>Website (optional)</label><input type="text" id="pf-website" placeholder="yourwebsite.com" /></div>
+          <div class="form-row full"><label>Years of Experience</label><input type="number" id="pf-years" min="0" max="60" placeholder="e.g. 10" /></div>
+        </div>
+      </div>
+      <div class="form-card">
+        <h3>✍️ Your Pitch</h3>
+        <div class="form-row full" id="pf-desc-row">
+          <label>Description *</label>
+          <textarea id="pf-desc" rows="5" maxlength="400" oninput="document.getElementById('pf-char').textContent=this.value.length" placeholder="Describe your services, specialisations, and why customers should choose you..."></textarea>
+          <div class="char-count"><span id="pf-char">0</span>/400</div>
+        </div>
+        <div class="form-row full"><label>Attributes</label>
+          <div class="tags-check">
+            <label><input type="checkbox" value="Licensed"/>🏅 Licensed</label>
+            <label><input type="checkbox" value="Insured"/>🛡️ Insured</label>
+            <label><input type="checkbox" value="24/7"/>⏰ 24/7</label>
+            <label><input type="checkbox" value="Free Quotes"/>💬 Free Quotes</label>
+            <label><input type="checkbox" value="Senior Discount"/>👴 Senior Discount</label>
+          </div>
+        </div>
+        <div class="form-row full">
+          <label>Featured Listing</label>
+          <div style="display:flex;align-items:center;gap:.75rem;">
+            <label class="toggle"><input type="checkbox" id="pf-featured"/><div class="toggle-slider"></div></label>
+            <span style="font-size:.875rem;font-weight:600;">Mark as Featured ⭐</span>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-orange" style="width:100%;justify-content:center;padding:1rem;font-size:1rem;" onclick="submitPost()">🚀 Post My Listing Free</button>
+    </div>
+  `;
+}
+
+function submitPost(){
+  const fields=[{id:'pf-name',row:'pf-name-row'},{id:'pf-trade',row:'pf-trade-row'},{id:'pf-location',row:'pf-location-row'},{id:'pf-phone',row:'pf-phone-row'},{id:'pf-email',row:'pf-email-row'},{id:'pf-desc',row:'pf-desc-row'}];
+  let valid=true;
+  fields.forEach(({id,row})=>{const el=document.getElementById(id);const r=document.getElementById(row);if(!el.value.trim()){r.classList.add('error');valid=false;}else r.classList.remove('error');});
+  if(!valid){showToast('Please fill in all required fields.','error');return;}
+  const tags=Array.from(document.querySelectorAll('.tags-check input:checked')).map(e=>e.value);
+  const contractor={
+    id:'c'+Date.now(),name:document.getElementById('pf-name').value.trim(),
+    trade:document.getElementById('pf-trade').value,location:document.getElementById('pf-location').value.trim(),
+    phone:document.getElementById('pf-phone').value.trim(),email:document.getElementById('pf-email').value.trim(),
+    website:document.getElementById('pf-website').value.trim(),
+    description:document.getElementById('pf-desc').value.trim(),
+    yearsExp:parseInt(document.getElementById('pf-years').value)||0,
+    rating:0,reviewCount:0,reviews:[],completedJobs:0,responseRate:null,verified:false,
+    tags,featured:document.getElementById('pf-featured').checked,
+    postedAt:new Date().toISOString().split('T')[0],
+  };
+  addContractor(contractor);
+  showToast('Your listing is live! Welcome to TradeFind.','success');
+  filtersState={trades:[contractor.trade],location:'',minRating:0,sort:'newest'};
+  setTimeout(()=>navigate('#/listings'),400);
+}
+
+// ═══════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════
+function showToast(msg,type=''){
+  const root=document.getElementById('toast-root');
+  const el=document.createElement('div');
+  el.className=`toast ${type}`;
+  el.textContent=msg;
+  root.appendChild(el);
+  setTimeout(()=>el.remove(),3200);
+}
+
+// ═══════════════════════════════════
+//  INIT
+// ═══════════════════════════════════
+seed();
+if(!window.location.hash||window.location.hash==='#')window.location.hash='#/';
+router();
+</script>
+</body>
+</html>
