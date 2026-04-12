@@ -305,17 +305,65 @@
       .nav-links .hide-mobile{display:none;}
     }
     @media(max-width:480px) { .how-grid{grid-template-columns:1fr;} .rating-overview{flex-direction:column;} }
+
+    /* ── AUTH ── */
+    .auth-wrap { max-width:440px; margin:3rem auto; padding:0 1.5rem 3rem; }
+    .auth-logo { text-align:center; font-size:1.6rem; font-weight:800; margin-bottom:1.75rem; cursor:pointer; }
+    .auth-logo span { color:var(--orange); }
+    .auth-card { background:var(--white); border-radius:14px; padding:2rem; box-shadow:0 4px 24px rgba(0,0,0,.1); }
+    .auth-card h2 { font-size:1.4rem; font-weight:800; margin-bottom:.3rem; }
+    .auth-card .sub { color:var(--muted); font-size:.875rem; margin-bottom:1.5rem; }
+    .social-btn { width:100%; display:flex; align-items:center; gap:.875rem; padding:.75rem 1rem; border-radius:var(--radius); font-size:.9rem; font-weight:600; cursor:pointer; margin-bottom:.6rem; transition:all .2s; font-family:inherit; border:1.5px solid var(--border); background:#fff; color:var(--text); }
+    .social-btn:hover { box-shadow:0 2px 8px rgba(0,0,0,.12); border-color:#aaa; }
+    .social-btn-apple { background:#000; color:#fff; border-color:#000; }
+    .social-btn-apple:hover { background:#222; border-color:#222; }
+    .social-btn .s-icon { width:22px; height:22px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
+    .divider-or { display:flex; align-items:center; gap:.75rem; margin:1.25rem 0; color:var(--muted); font-size:.8rem; font-weight:600; }
+    .divider-or::before,.divider-or::after { content:''; flex:1; height:1px; background:var(--border); }
+    .auth-error { color:var(--red); font-size:.8rem; font-weight:600; margin-bottom:.75rem; display:none; padding:.5rem .75rem; background:#fff1f2; border-radius:6px; border:1px solid #fecdd3; }
+    .auth-error.visible { display:block; }
+    .auth-footer { text-align:center; margin-top:1.25rem; font-size:.875rem; color:var(--muted); }
+    .auth-footer a { color:var(--blue); font-weight:600; cursor:pointer; text-decoration:none; }
+    .auth-footer a:hover { text-decoration:underline; }
+
+    /* ── NAV USER ── */
+    .nav-user { display:flex; align-items:center; gap:.6rem; }
+    .nav-avatar { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.75rem; font-weight:700; color:#fff; flex-shrink:0; border:2px solid rgba(255,255,255,.4); }
+    .nav-user-name { font-size:.85rem; font-weight:600; color:#fff; max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .nav-logout { font-size:.8rem; color:rgba(255,255,255,.7); cursor:pointer; padding:.3rem .5rem; border-radius:4px; background:none; border:none; font-family:inherit; transition:background .2s; }
+    .nav-logout:hover { background:rgba(255,255,255,.15); color:#fff; }
+
+    /* ── SOCIAL MOCK MODAL ── */
+    .mock-provider-header { border-radius:10px 10px 0 0; padding:1.25rem; text-align:center; margin:-1.5rem -1.5rem 1rem; }
+    .mock-provider-logo { font-size:2.5rem; display:block; margin-bottom:.4rem; }
+    .mock-account-row { display:flex; align-items:center; gap:.75rem; background:var(--bg); border-radius:var(--radius); padding:.875rem; margin:1rem 0; border:1px solid var(--border); }
+    .mock-account-info .mock-name { font-weight:700; font-size:.9rem; }
+    .mock-account-info .mock-email { font-size:.78rem; color:var(--muted); margin-top:.1rem; }
+    .mock-disclaimer { font-size:.72rem; color:var(--muted); text-align:center; margin-top:.75rem; }
+
+    /* ── TRADE INTERSTITIAL ── */
+    .interstitial-choices { display:flex; gap:1rem; margin:1.25rem 0; }
+    .choice-card { flex:1; border:2px solid var(--border); border-radius:var(--radius); padding:1.25rem 1rem; text-align:center; cursor:pointer; transition:all .2s; }
+    .choice-card:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.1); }
+    .choice-card.primary { border-color:var(--orange); background:#fff7ed; }
+    .choice-card.primary:hover { background:#ffedd5; }
+    .choice-card.secondary { border-color:var(--blue); background:#eff6ff; }
+    .choice-card.secondary:hover { background:#dbeafe; }
+    .choice-card .c-icon { font-size:2rem; display:block; margin-bottom:.6rem; }
+    .choice-card .c-label { font-weight:700; font-size:.95rem; margin-bottom:.3rem; }
+    .choice-card .c-desc { font-size:.78rem; color:var(--muted); line-height:1.4; }
+    @media(max-width:480px) { .interstitial-choices{flex-direction:column;} }
   </style>
 </head>
 <body>
 
 <nav id="main-nav">
   <div class="nav-logo" onclick="navigate('#/')">Trade<span>Find</span></div>
-  <div class="nav-links">
+  <div class="nav-links" id="nav-links">
     <a class="hide-mobile" onclick="navigate('#/listings')">Browse</a>
-    <a class="hide-mobile" onclick="navigate('#/jobs')">Jobs Board</a>
+    <a class="hide-mobile" onclick="navigate('#/jobs')">My Jobs</a>
     <a onclick="navigate('#/request')">📋 Post a Job</a>
-    <a onclick="navigate('#/post')" class="btn-nav">+ List Business</a>
+    <a onclick="navigate('#/post')" class="btn-nav hide-mobile">+ List Business</a>
   </div>
 </nav>
 
@@ -502,6 +550,32 @@ function saveContractors(a) { localStorage.setItem('tf_contractors',JSON.stringi
 function getJobs() { try{return JSON.parse(localStorage.getItem('tf_jobs')||'[]');}catch{return [];} }
 function saveJobs(a) { localStorage.setItem('tf_jobs',JSON.stringify(a)); }
 
+// ── AUTH STORAGE ──
+function getUsers() { try{return JSON.parse(localStorage.getItem('tf_users')||'[]');}catch{return [];} }
+function saveUsers(a) { localStorage.setItem('tf_users',JSON.stringify(a)); }
+function getSession() { try{return JSON.parse(localStorage.getItem('tf_session')||'null');}catch{return null;} }
+function saveSession(o) { localStorage.setItem('tf_session',JSON.stringify(o)); }
+function clearSession() { localStorage.removeItem('tf_session'); }
+function findUserByEmail(email) { return getUsers().find(u=>u.email===email.toLowerCase()); }
+
+function hashString(s) {
+  let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h)^s.charCodeAt(i);
+  return (h>>>0).toString(36);
+}
+
+function createUser({name,email,password,provider}){
+  const user={id:'u'+Date.now(),name,email:email.toLowerCase(),
+    passwordHash:password?hashString(password):'',
+    provider:provider||'local',avatarColor:avatarColor(name),createdAt:new Date().toISOString()};
+  const users=getUsers(); users.push(user); saveUsers(users); return user;
+}
+
+function requireAuth(redirectPath){
+  const sess=getSession();
+  if(!sess){ sessionStorage.setItem('tf_redirect',redirectPath||''); navigate('#/login'); return null; }
+  return sess;
+}
+
 function seed() {
   if(!localStorage.getItem('tf_contractors')) saveContractors(SEED_CONTRACTORS);
   if(!localStorage.getItem('tf_jobs')) saveJobs(SEED_JOBS);
@@ -579,6 +653,202 @@ function urgencyInfo(u){
 //  ROUTER
 // ═══════════════════════════════════
 function navigate(hash){window.location.hash=hash;}
+
+// ═══════════════════════════════════
+//  NAV
+// ═══════════════════════════════════
+function updateNav(){
+  const sess=getSession();
+  const links=document.getElementById('nav-links');
+  if(!links)return;
+  if(sess){
+    links.innerHTML=`
+      <a class="hide-mobile" onclick="navigate('#/listings')">Browse</a>
+      <a class="hide-mobile" onclick="navigate('#/jobs')">My Jobs</a>
+      <a onclick="navigate('#/request')">📋 Post a Job</a>
+      <div class="nav-user hide-mobile">
+        <div class="nav-avatar" style="background:${avatarColor(sess.name)}">${initials(sess.name)}</div>
+        <span class="nav-user-name">${esc(sess.name)}</span>
+        <button class="nav-logout" onclick="logout()">Sign out</button>
+      </div>
+      <a onclick="navigate('#/post')" class="btn-nav">+ List</a>
+    `;
+  } else {
+    links.innerHTML=`
+      <a class="hide-mobile" onclick="navigate('#/listings')">Browse</a>
+      <a class="hide-mobile" onclick="navigate('#/jobs')">Jobs Board</a>
+      <a onclick="navigate('#/request')">📋 Post a Job</a>
+      <a onclick="navigate('#/login')" class="hide-mobile">Login</a>
+      <a onclick="navigate('#/post')" class="btn-nav">+ List Business</a>
+    `;
+  }
+}
+
+function logout(){
+  clearSession();
+  updateNav();
+  showToast('You have been signed out.');
+  navigate('#/');
+}
+
+// ═══════════════════════════════════
+//  AUTH — LOGIN
+// ═══════════════════════════════════
+const SOCIAL_MOCK={
+  google:    {name:'Alex Demo',   email:'alex.demo@gmail.com',    logo:'🇬',  color:'#4285F4', label:'Google'},
+  apple:     {name:'Sam Apple',   email:'sam.apple@icloud.com',   logo:'🍎',  color:'#000000', label:'Apple'},
+  microsoft: {name:'Jordan MS',   email:'jordan.ms@outlook.com',  logo:'🪟',  color:'#0078D4', label:'Microsoft'},
+};
+
+function renderLogin(){
+  updateNav();
+  document.getElementById('app').innerHTML=`
+    <div class="auth-wrap">
+      <div class="auth-logo" onclick="navigate('#/')">Trade<span>Find</span></div>
+      <div class="auth-card">
+        <h2>Welcome back</h2>
+        <p class="sub">Sign in to post job requests and manage your quotes.</p>
+
+        <button class="social-btn" onclick="openSocialMockModal('google')">
+          <span class="s-icon">🇬</span> Continue with Google
+        </button>
+        <button class="social-btn social-btn-apple" onclick="openSocialMockModal('apple')">
+          <span class="s-icon">🍎</span> Continue with Apple
+        </button>
+        <button class="social-btn" onclick="openSocialMockModal('microsoft')">
+          <span class="s-icon">🪟</span> Continue with Microsoft
+        </button>
+
+        <div class="divider-or">or</div>
+
+        <div id="login-error" class="auth-error"></div>
+        <div class="form-row"><label>Email address</label><input type="email" id="li-email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')submitLogin()" /></div>
+        <div class="form-row"><label>Password</label><input type="password" id="li-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitLogin()" /></div>
+        <button class="btn btn-orange" style="width:100%;justify-content:center;margin-top:.25rem;" onclick="submitLogin()">Sign In</button>
+      </div>
+      <div class="auth-footer">Don't have an account? <a onclick="navigate('#/register')">Create one free</a></div>
+    </div>
+  `;
+}
+
+function submitLogin(){
+  const email=document.getElementById('li-email').value.trim();
+  const pass=document.getElementById('li-password').value;
+  const errEl=document.getElementById('login-error');
+  const showErr=msg=>{errEl.textContent=msg;errEl.classList.add('visible');};
+  errEl.classList.remove('visible');
+  if(!email||!pass){showErr('Please enter your email and password.');return;}
+  const user=findUserByEmail(email);
+  if(!user){showErr('No account found with that email address.');return;}
+  if(user.provider!=='local'){showErr(`This account uses ${user.provider} sign-in. Use the button above.`);return;}
+  if(hashString(pass)!==user.passwordHash){showErr('Incorrect password. Please try again.');return;}
+  _finishLogin(user);
+}
+
+// ═══════════════════════════════════
+//  AUTH — REGISTER
+// ═══════════════════════════════════
+function renderRegister(){
+  updateNav();
+  document.getElementById('app').innerHTML=`
+    <div class="auth-wrap">
+      <div class="auth-logo" onclick="navigate('#/')">Trade<span>Find</span></div>
+      <div class="auth-card">
+        <h2>Create your account</h2>
+        <p class="sub">Free to join. Post job requests and get quotes from local tradespeople.</p>
+
+        <button class="social-btn" onclick="openSocialMockModal('google')">
+          <span class="s-icon">🇬</span> Sign up with Google
+        </button>
+        <button class="social-btn social-btn-apple" onclick="openSocialMockModal('apple')">
+          <span class="s-icon">🍎</span> Sign up with Apple
+        </button>
+        <button class="social-btn" onclick="openSocialMockModal('microsoft')">
+          <span class="s-icon">🪟</span> Sign up with Microsoft
+        </button>
+
+        <div class="divider-or">or</div>
+
+        <div id="reg-error" class="auth-error"></div>
+        <div class="form-row"><label>Full Name</label><input type="text" id="re-name" placeholder="e.g. Sarah Mitchell" /></div>
+        <div class="form-row"><label>Email Address</label><input type="email" id="re-email" placeholder="you@example.com" /></div>
+        <div class="form-row"><label>Password <span style="font-weight:400;color:var(--muted);">(min 6 characters)</span></label><input type="password" id="re-pass" placeholder="••••••••" /></div>
+        <div class="form-row"><label>Confirm Password</label><input type="password" id="re-pass2" placeholder="••••••••" /></div>
+        <button class="btn btn-orange" style="width:100%;justify-content:center;margin-top:.25rem;" onclick="submitRegister()">Create Account</button>
+      </div>
+      <div class="auth-footer">Already have an account? <a onclick="navigate('#/login')">Sign in</a></div>
+    </div>
+  `;
+}
+
+function submitRegister(){
+  const name=document.getElementById('re-name').value.trim();
+  const email=document.getElementById('re-email').value.trim();
+  const pass=document.getElementById('re-pass').value;
+  const pass2=document.getElementById('re-pass2').value;
+  const errEl=document.getElementById('reg-error');
+  const showErr=msg=>{errEl.textContent=msg;errEl.classList.add('visible');};
+  errEl.classList.remove('visible');
+  if(!name||!email||!pass||!pass2){showErr('Please fill in all fields.');return;}
+  if(pass.length<6){showErr('Password must be at least 6 characters.');return;}
+  if(pass!==pass2){showErr('Passwords do not match.');return;}
+  if(findUserByEmail(email)){showErr('An account with that email already exists. Try signing in.');return;}
+  const user=createUser({name,email,password:pass,provider:'local'});
+  _finishLogin(user);
+}
+
+// ═══════════════════════════════════
+//  AUTH — SOCIAL MOCK
+// ═══════════════════════════════════
+function openSocialMockModal(provider){
+  const m=SOCIAL_MOCK[provider]; if(!m)return;
+  closeModal();
+  const overlay=document.createElement('div');
+  overlay.className='modal-overlay'; overlay.id='modal-overlay';
+  overlay.innerHTML=`
+    <div class="modal" style="max-width:380px;">
+      <div class="mock-provider-header" style="background:${m.color}20;border-bottom:1px solid ${m.color}30;">
+        <span class="mock-provider-logo">${m.logo}</span>
+        <strong style="font-size:1rem;">Sign in with ${m.label}</strong>
+      </div>
+      <div class="modal-body" style="padding:1.25rem 1.5rem 1.5rem;">
+        <p style="font-size:.85rem;color:var(--muted);margin-bottom:.75rem;">Choose an account to continue to TradeFind.</p>
+        <div class="mock-account-row">
+          <div class="avatar" style="background:${avatarColor(m.name)};width:40px;height:40px;font-size:.85rem;flex-shrink:0;">${initials(m.name)}</div>
+          <div class="mock-account-info">
+            <div class="mock-name">${esc(m.name)}</div>
+            <div class="mock-email">${esc(m.email)}</div>
+          </div>
+        </div>
+        <button class="btn" style="width:100%;justify-content:center;background:${m.color};color:#fff;margin-bottom:.6rem;" onclick="loginWithProvider('${provider}')">
+          Continue as ${esc(m.name)}
+        </button>
+        <div style="text-align:center;font-size:.78rem;color:var(--muted);cursor:default;">Use a different account ›</div>
+        <p class="mock-disclaimer">⚠️ This is a simulated sign-in for demo purposes only.</p>
+      </div>
+    </div>
+  `;
+  document.getElementById('modal-root').appendChild(overlay);
+  document.body.style.overflow='hidden';
+  overlay.addEventListener('click',e=>{if(e.target===overlay)closeModal();});
+}
+
+function loginWithProvider(provider){
+  const m=SOCIAL_MOCK[provider]; if(!m)return;
+  closeModal();
+  let user=findUserByEmail(m.email);
+  if(!user) user=createUser({name:m.name,email:m.email,password:null,provider});
+  _finishLogin(user);
+}
+
+function _finishLogin(user){
+  saveSession({userId:user.id,name:user.name,email:user.email,provider:user.provider,loginAt:new Date().toISOString()});
+  updateNav();
+  showToast(`Welcome, ${user.name.split(' ')[0]}! 👋`,'success');
+  const redirect=sessionStorage.getItem('tf_redirect');
+  sessionStorage.removeItem('tf_redirect');
+  navigate(redirect?'#/'+redirect:'#/');
+}
 function getHashParts(){
   const full=window.location.hash;
   const [path,qs]=full.split('?');
@@ -589,16 +859,65 @@ function getHashParts(){
 
 let filtersState={trades:[],location:'',minRating:0,sort:'featured'};
 
+// ═══════════════════════════════════
+//  TRADE INTERSTITIAL
+// ═══════════════════════════════════
+function openTradeInterstitial(tradeId){
+  const t=tradeInfo(tradeId);
+  closeModal();
+  const overlay=document.createElement('div');
+  overlay.className='modal-overlay'; overlay.id='modal-overlay';
+  overlay.innerHTML=`
+    <div class="modal" style="max-width:500px;">
+      <div class="modal-body" style="padding:2rem;">
+        <div style="text-align:center;margin-bottom:1.25rem;">
+          <span style="font-size:3rem;">${t.icon}</span>
+          <h2 style="font-size:1.3rem;font-weight:800;margin-top:.5rem;">${esc(t.label)}</h2>
+          <p style="color:var(--muted);font-size:.9rem;margin-top:.25rem;">What would you like to do?</p>
+        </div>
+        <div class="interstitial-choices">
+          <div class="choice-card primary" onclick="interstitialPostRequest('${tradeId}')">
+            <span class="c-icon">📋</span>
+            <div class="c-label">Post a Request</div>
+            <div class="c-desc">Describe your job and get quotes from local ${esc(t.label.toLowerCase())}s</div>
+          </div>
+          <div class="choice-card secondary" onclick="closeModal();navigate('#/listings?trade=${tradeId}')">
+            <span class="c-icon">🔍</span>
+            <div class="c-label">Browse Tradespeople</div>
+            <div class="c-desc">View profiles, ratings, and reviews of local contractors</div>
+          </div>
+        </div>
+        <div style="text-align:center;"><a style="font-size:.8rem;color:var(--muted);cursor:pointer;" onclick="closeModal()">Cancel</a></div>
+      </div>
+    </div>
+  `;
+  document.getElementById('modal-root').appendChild(overlay);
+  document.body.style.overflow='hidden';
+}
+
+function interstitialPostRequest(tradeId){
+  closeModal();
+  if(!getSession()){
+    sessionStorage.setItem('tf_redirect','request?trade='+tradeId);
+    navigate('#/login');
+  } else {
+    navigate('#/request?trade='+tradeId);
+  }
+}
+
 function router(){
   const{path,params}=getHashParts();
   if(params.trade&&!filtersState.trades.includes(params.trade))filtersState.trades=[params.trade];
   if(params.location&&!filtersState.location)filtersState.location=params.location;
   closeModal();
+  updateNav();
   if(!path||path==='#/'||path==='#')renderHome();
   else if(path==='#/listings')renderListings();
   else if(path==='#/post')renderPost();
-  else if(path==='#/request')renderJobRequest();
+  else if(path==='#/request'){if(!requireAuth('request'+(getHashParts().params.trade?'?trade='+getHashParts().params.trade:'')))return;renderJobRequest();}
   else if(path==='#/jobs')renderJobsBoard();
+  else if(path==='#/login')renderLogin();
+  else if(path==='#/register')renderRegister();
   else renderHome();
 }
 window.addEventListener('hashchange',router);
@@ -647,7 +966,7 @@ function renderHome(){
         <div class="section-title">Browse by Trade</div>
         <div class="section-sub">Click a category to browse available contractors</div>
         <div class="trade-grid">
-          ${TRADES.map(t=>`<div class="trade-card" onclick="navigate('#/listings?trade=${t.id}')"><span class="icon">${t.icon}</span><span class="label">${t.label}</span></div>`).join('')}
+          ${TRADES.map(t=>`<div class="trade-card" onclick="openTradeInterstitial('${t.id}')"><span class="icon">${t.icon}</span><span class="label">${t.label}</span></div>`).join('')}
         </div>
       </div>
     </div>
@@ -1113,6 +1432,7 @@ let selectedUrgency='flexible';
 
 function renderJobRequest(){
   const{params}=getHashParts();
+  const sess=getSession();
   document.getElementById('app').innerHTML=`
     <div class="job-form-wrap">
       <h2>Post a Job</h2>
@@ -1134,8 +1454,11 @@ function renderJobRequest(){
             <textarea id="jf-desc" rows="4" maxlength="500" oninput="document.getElementById('jf-char').textContent=this.value.length" placeholder="Describe the problem, size of the job, any specific requirements..."></textarea>
             <div class="char-count"><span id="jf-char">0</span>/500</div>
           </div>
-          <div class="form-row"><label>Budget (optional)</label><input type="text" id="jf-budget" placeholder="e.g. $200-$400 or 'open'" /></div>
-          <div class="form-row" id="jf-name-row"><label>Your Name *</label><input type="text" id="jf-name" placeholder="First name + last initial" /></div>
+          <div class="form-row full"><label>Budget (optional)</label><input type="text" id="jf-budget" placeholder="e.g. $200-$400 or 'open'" /></div>
+          <div class="form-row full">
+            <label>Posting as</label>
+            <input type="text" id="jf-name" value="${esc(sess?sess.name:'')}" readonly style="background:var(--bg);cursor:not-allowed;color:var(--muted);" />
+          </div>
         </div>
       </div>
 
@@ -1163,7 +1486,7 @@ function selectUrgency(u){
 }
 
 function submitJobRequest(){
-  const fields=[{id:'jf-title',row:'jf-title-row'},{id:'jf-trade',row:'jf-trade-row'},{id:'jf-location',row:'jf-location-row'},{id:'jf-desc',row:'jf-desc-row'},{id:'jf-name',row:'jf-name-row'}];
+  const fields=[{id:'jf-title',row:'jf-title-row'},{id:'jf-trade',row:'jf-trade-row'},{id:'jf-location',row:'jf-location-row'},{id:'jf-desc',row:'jf-desc-row'}];
   let valid=true;
   fields.forEach(({id,row})=>{
     const el=document.getElementById(id);
@@ -1171,7 +1494,7 @@ function submitJobRequest(){
     if(!el.value.trim()){rowEl.classList.add('error');valid=false;}else rowEl.classList.remove('error');
   });
   if(!valid){showToast('Please fill in all required fields.','error');return;}
-
+  const sess=getSession();
   const job={
     id:'j'+Date.now(),
     title:document.getElementById('jf-title').value.trim(),
@@ -1180,7 +1503,8 @@ function submitJobRequest(){
     description:document.getElementById('jf-desc').value.trim(),
     budget:document.getElementById('jf-budget').value.trim()||'open',
     urgency:selectedUrgency,
-    customerName:document.getElementById('jf-name').value.trim(),
+    customerName:sess?sess.name:'Anonymous',
+    customerId:sess?sess.userId:null,
     postedAt:new Date().toISOString().split('T')[0],
     status:'open',
     quotes:[],
@@ -1195,12 +1519,23 @@ function submitJobRequest(){
 // ═══════════════════════════════════
 let jobsTab='open';
 
+function getVisibleJobs(){
+  const sess=getSession();
+  // Logged-in users see only their own jobs + seed jobs (customerId===null)
+  // Logged-out users see only seed jobs
+  return getJobs().filter(j=>j.customerId===null||(sess&&j.customerId===sess.userId));
+}
+
 function renderJobsBoard(){
-  const jobs=getJobs();
+  const sess=getSession();
+  const jobs=getVisibleJobs();
   document.getElementById('app').innerHTML=`
     <div class="jobs-layout">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
-        <div><h2 style="font-size:1.75rem;font-weight:800;">Jobs Board</h2><p style="color:var(--muted);margin-top:.2rem;">Real jobs posted by customers seeking quotes</p></div>
+        <div>
+          <h2 style="font-size:1.75rem;font-weight:800;">${sess?'My Jobs':'Jobs Board'}</h2>
+          <p style="color:var(--muted);margin-top:.2rem;">${sess?`Jobs posted by ${esc(sess.name.split(' ')[0])}`:'Sample jobs — <a onclick="navigate(\'#/login\')" style="color:var(--blue);font-weight:600;">sign in</a> to post your own'}</p>
+        </div>
         <button class="btn btn-orange" onclick="navigate('#/request')">📋 Post a Job</button>
       </div>
 
@@ -1213,7 +1548,12 @@ function renderJobsBoard(){
   `;
 }
 
-function switchJobTab(t){jobsTab=t;const jobs=getJobs();document.querySelectorAll('.jobs-tab').forEach(el=>el.classList.toggle('active',el.textContent.trim().toLowerCase().startsWith(t)));document.getElementById('jobs-list').innerHTML=renderJobsList(jobs);}
+function switchJobTab(t){
+  jobsTab=t;
+  const jobs=getVisibleJobs();
+  document.querySelectorAll('.jobs-tab').forEach(el=>el.classList.toggle('active',el.textContent.trim().toLowerCase().startsWith(t)));
+  document.getElementById('jobs-list').innerHTML=renderJobsList(jobs);
+}
 
 function renderJobsList(jobs){
   const filtered=jobs.filter(j=>j.status===jobsTab);
@@ -1446,6 +1786,7 @@ function showToast(msg,type=''){
 //  INIT
 // ═══════════════════════════════════
 seed();
+updateNav();
 if(!window.location.hash||window.location.hash==='#')window.location.hash='#/';
 router();
 </script>
