@@ -342,11 +342,47 @@
     .auth-footer a:hover { text-decoration:underline; }
 
     /* ── NAV USER ── */
-    .nav-user { display:flex; align-items:center; gap:.6rem; }
-    .nav-avatar { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.75rem; font-weight:700; color:#fff; flex-shrink:0; border:2px solid rgba(255,255,255,.4); }
+    .nav-user { display:flex; align-items:center; gap:.5rem; }
+    .nav-avatar { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.75rem; font-weight:700; color:#fff; flex-shrink:0; border:2px solid rgba(255,255,255,.4); cursor:pointer; transition:opacity .2s; }
+    .nav-avatar:hover { opacity:.85; }
     .nav-user-name { font-size:.85rem; font-weight:600; color:#fff; max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .nav-logout { font-size:.8rem; color:rgba(255,255,255,.7); cursor:pointer; padding:.3rem .5rem; border-radius:4px; background:none; border:none; font-family:inherit; transition:background .2s; }
     .nav-logout:hover { background:rgba(255,255,255,.15); color:#fff; }
+
+    /* ── BELL ── */
+    .nav-bell { position:relative; cursor:pointer; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition:background .2s; flex-shrink:0; }
+    .nav-bell:hover { background:rgba(255,255,255,.15); }
+    .nav-bell svg { width:20px; height:20px; fill:none; stroke:#fff; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+    .nav-bell-badge { position:absolute; top:2px; right:2px; background:var(--red); color:#fff; font-size:.6rem; font-weight:800; min-width:16px; height:16px; border-radius:99px; display:flex; align-items:center; justify-content:center; padding:0 3px; border:2px solid var(--blue); animation:badgePop .3s ease; }
+    @keyframes badgePop { from{transform:scale(0)}to{transform:scale(1)} }
+
+    /* ── PROFILE DROPDOWN ── */
+    .profile-dropdown { position:absolute; top:56px; right:1rem; background:#fff; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,.15); width:220px; z-index:200; animation:slideUp .2s ease; overflow:hidden; }
+    .profile-dropdown-header { padding:1rem; background:var(--bg); border-bottom:1px solid var(--border); }
+    .profile-dropdown-name { font-weight:700; font-size:.95rem; color:var(--text); }
+    .profile-dropdown-email { font-size:.78rem; color:var(--muted); margin-top:.15rem; word-break:break-all; }
+    .profile-dropdown-item { display:flex; align-items:center; gap:.6rem; padding:.7rem 1rem; font-size:.875rem; font-weight:500; color:var(--text); cursor:pointer; transition:background .15s; border:none; background:none; width:100%; font-family:inherit; text-align:left; }
+    .profile-dropdown-item:hover { background:var(--bg); }
+    .profile-dropdown-item.danger { color:var(--red); }
+    .profile-dropdown-item.danger:hover { background:#fff1f2; }
+    .profile-dropdown-divider { height:1px; background:var(--border); margin:0; }
+
+    /* ── NOTIFICATION PANEL ── */
+    .notif-panel { position:absolute; top:56px; right:1rem; background:#fff; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,.15); width:320px; z-index:200; animation:slideUp .2s ease; overflow:hidden; max-height:420px; display:flex; flex-direction:column; }
+    .notif-panel-header { padding:.75rem 1rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+    .notif-panel-header h4 { font-size:.9rem; font-weight:700; }
+    .notif-panel-clear { font-size:.75rem; color:var(--blue); cursor:pointer; font-weight:600; background:none; border:none; font-family:inherit; }
+    .notif-list { overflow-y:auto; flex:1; }
+    .notif-item { padding:.75rem 1rem; border-bottom:1px solid var(--border); cursor:pointer; transition:background .15s; display:flex; gap:.6rem; align-items:flex-start; }
+    .notif-item:hover { background:var(--bg); }
+    .notif-item.unread { background:#eff6ff; }
+    .notif-item.unread:hover { background:#dbeafe; }
+    .notif-dot { width:8px; height:8px; border-radius:50%; background:var(--blue); flex-shrink:0; margin-top:.35rem; }
+    .notif-dot.read { background:transparent; }
+    .notif-text { font-size:.82rem; line-height:1.5; color:var(--text); flex:1; }
+    .notif-text strong { font-weight:600; }
+    .notif-time { font-size:.72rem; color:var(--muted); margin-top:.2rem; }
+    .notif-empty { padding:2rem; text-align:center; color:var(--muted); font-size:.875rem; }
 
     /* ── SOCIAL MOCK MODAL ── */
     .mock-provider-header { border-radius:10px 10px 0 0; padding:1.25rem; text-align:center; margin:-1.5rem -1.5rem 1rem; }
@@ -376,7 +412,7 @@
   <div class="nav-logo" onclick="navigate('#/')">Trade<span>Find</span></div>
   <div class="nav-links" id="nav-links">
     <a class="hide-mobile" onclick="navigate('#/listings')">Browse</a>
-    <a class="hide-mobile" onclick="navigate('#/jobs')">My Jobs</a>
+    <a class="hide-mobile" onclick="navigate('#/jobs')">My Requests</a>
     <a onclick="navigate('#/request')">📋 Post a Job</a>
     <a onclick="navigate('#/post')" class="btn-nav hide-mobile">+ List Business</a>
   </div>
@@ -591,6 +627,36 @@ function requireAuth(redirectPath){
   return sess;
 }
 
+// ── NOTIFICATIONS ──
+function getNotifications(){
+  const sess=getSession(); if(!sess)return[];
+  try{return JSON.parse(localStorage.getItem('tf_notifs_'+sess.userId)||'[]');}catch{return[];}
+}
+function saveNotifications(a){
+  const sess=getSession(); if(!sess)return;
+  localStorage.setItem('tf_notifs_'+sess.userId,JSON.stringify(a));
+}
+function pushNotification(userId,notif){
+  try{
+    const key='tf_notifs_'+userId;
+    const a=JSON.parse(localStorage.getItem(key)||'[]');
+    a.unshift({id:'n'+Date.now(),...notif,read:false,createdAt:new Date().toISOString()});
+    localStorage.setItem(key,JSON.stringify(a.slice(0,50))); // cap at 50
+  }catch{}
+}
+function markAllRead(){
+  const a=getNotifications().map(n=>({...n,read:true}));
+  saveNotifications(a); updateNavBell();
+}
+function unreadCount(){ return getNotifications().filter(n=>!n.read).length; }
+function updateNavBell(){
+  const badge=document.getElementById('nav-bell-badge');
+  if(!badge)return;
+  const cnt=unreadCount();
+  badge.textContent=cnt>9?'9+':cnt;
+  badge.style.display=cnt>0?'flex':'none';
+}
+
 function seed() {
   if(!localStorage.getItem('tf_contractors')) saveContractors(SEED_CONTRACTORS);
   if(!localStorage.getItem('tf_jobs')) saveJobs(SEED_JOBS);
@@ -677,16 +743,19 @@ function updateNav(){
   const links=document.getElementById('nav-links');
   if(!links)return;
   if(sess){
+    const cnt=unreadCount();
     links.innerHTML=`
       <a class="hide-mobile" onclick="navigate('#/listings')">Browse</a>
-      <a class="hide-mobile" onclick="navigate('#/jobs')">My Jobs</a>
+      <a class="hide-mobile" onclick="navigate('#/jobs')">My Requests</a>
       <a onclick="navigate('#/request')">📋 Post a Job</a>
-      <div class="nav-user hide-mobile">
-        <div class="nav-avatar" style="background:${avatarColor(sess.name)}">${initials(sess.name)}</div>
-        <span class="nav-user-name">${esc(sess.name)}</span>
-        <button class="nav-logout" onclick="logout()">Sign out</button>
+      <div class="nav-user">
+        <div class="nav-bell" onclick="toggleNotifPanel(event)" title="Notifications">
+          <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span id="nav-bell-badge" class="nav-bell-badge" style="display:${cnt>0?'flex':'none'}">${cnt>9?'9+':cnt}</span>
+        </div>
+        <div class="nav-avatar" style="background:${avatarColor(sess.name)}" onclick="toggleProfileDropdown(event)" title="Profile">${initials(sess.name)}</div>
       </div>
-      <a onclick="navigate('#/post')" class="btn-nav">+ List</a>
+      <a onclick="navigate('#/post')" class="btn-nav hide-mobile">+ List</a>
     `;
   } else {
     links.innerHTML=`
@@ -698,6 +767,71 @@ function updateNav(){
     `;
   }
 }
+
+function toggleProfileDropdown(e){
+  e.stopPropagation();
+  closeNavPanels();
+  const sess=getSession(); if(!sess)return;
+  const existing=document.getElementById('profile-dropdown');
+  if(existing){existing.remove();return;}
+  const el=document.createElement('div');
+  el.id='profile-dropdown'; el.className='profile-dropdown';
+  el.innerHTML=`
+    <div class="profile-dropdown-header">
+      <div class="profile-dropdown-name">${esc(sess.name)}</div>
+      <div class="profile-dropdown-email">${esc(sess.email)}</div>
+    </div>
+    <button class="profile-dropdown-item" onclick="closeNavPanels();navigate('#/jobs')">📋 My Requests</button>
+    <button class="profile-dropdown-item" onclick="closeNavPanels();navigate('#/listings')">🔍 Browse Contractors</button>
+    <button class="profile-dropdown-item" onclick="closeNavPanels();navigate('#/request')">✏️ Post a Job</button>
+    <div class="profile-dropdown-divider"></div>
+    <button class="profile-dropdown-item danger" onclick="closeNavPanels();logout()">🚪 Sign Out</button>
+  `;
+  document.getElementById('main-nav').appendChild(el);
+}
+
+function toggleNotifPanel(e){
+  e.stopPropagation();
+  closeNavPanels('notif-panel');
+  const existing=document.getElementById('notif-panel');
+  if(existing){existing.remove();return;}
+  const notifs=getNotifications();
+  const el=document.createElement('div');
+  el.id='notif-panel'; el.className='notif-panel';
+  el.innerHTML=`
+    <div class="notif-panel-header">
+      <h4>Notifications</h4>
+      ${notifs.some(n=>!n.read)?`<button class="notif-panel-clear" onclick="markAllRead()">Mark all read</button>`:''}
+    </div>
+    <div class="notif-list">
+      ${notifs.length===0
+        ?`<div class="notif-empty">🔔 No notifications yet.<br>You'll be notified when contractors quote on your jobs.</div>`
+        :notifs.map(n=>`
+          <div class="notif-item ${n.read?'':'unread'}" onclick="onNotifClick('${n.id}','${n.link||''}')">
+            <div class="notif-dot ${n.read?'read':''}"></div>
+            <div>
+              <div class="notif-text">${esc(n.message)}</div>
+              <div class="notif-time">${fmtRelDate(n.createdAt)}</div>
+            </div>
+          </div>
+        `).join('')}
+    </div>
+  `;
+  document.getElementById('main-nav').appendChild(el);
+  markAllRead();
+}
+
+function onNotifClick(id,link){
+  closeNavPanels();
+  if(link) navigate(link);
+}
+
+function closeNavPanels(except){
+  ['profile-dropdown','notif-panel'].forEach(id=>{
+    if(id!==except){const el=document.getElementById(id);if(el)el.remove();}
+  });
+}
+document.addEventListener('click',()=>closeNavPanels());
 
 function logout(){
   clearSession();
@@ -1615,7 +1749,7 @@ function renderJobsBoard(){
     <div class="jobs-layout">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
         <div>
-          <h2 style="font-size:1.75rem;font-weight:800;">${sess?'My Jobs':'Jobs Board'}</h2>
+          <h2 style="font-size:1.75rem;font-weight:800;">${sess?'My Requests':'Jobs Board'}</h2>
           <p style="color:var(--muted);margin-top:.2rem;">${sess?`Jobs posted by ${esc(sess.name.split(' ')[0])}`:'Sample jobs — <a onclick="navigate(\'#/login\')" style="color:var(--blue);font-weight:600;">sign in</a> to post your own'}</p>
         </div>
         <button class="btn btn-orange" onclick="navigate('#/request')">📋 Post a Job</button>
@@ -1680,7 +1814,7 @@ function renderJobCard(j){
         </div>
       `:`<div class="job-footer"><span class="quote-count">No quotes yet — <strong>be the first!</strong></span></div>`}
 
-      ${j.status==='open'||j.status==='quoted'?`<button class="btn btn-ghost btn-sm" style="margin-top:.5rem;" onclick="openQuoteModal('${j.id}')">📩 Submit a Quote</button>`:''}
+      ${(j.status==='open'||j.status==='quoted')&&(()=>{const s=getSession();return !s||j.customerId!==s.userId;})()?`<button class="btn btn-ghost btn-sm" style="margin-top:.5rem;" onclick="openQuoteModal('${j.id}')">📩 Submit a Quote</button>`:''}
       ${j.status==='hired'&&hiredQuote?`<div style="background:#f0fdf4;border-radius:8px;padding:.75rem;margin-top:.5rem;font-size:.85rem;"><strong style="color:var(--green);">✓ Hired:</strong> ${esc(hiredQuote.contractorName)} for $${hiredQuote.price} <button class="btn btn-ghost btn-xs" style="margin-left:.5rem;" onclick="completeJob('${j.id}')">Mark Completed</button></div>`:''}
       ${j.status==='completed'?`<div style="background:#f0fdf4;border-radius:8px;padding:.75rem;margin-top:.5rem;font-size:.85rem;color:var(--green);font-weight:600;">✓ Job completed</div>`:''}
     </div>
@@ -1779,6 +1913,15 @@ function submitQuote(jobId){
     postedAt:new Date().toISOString().split('T')[0],
   };
   addQuote(jobId,quote);
+  const job=getJobs().find(j=>j.id===jobId);
+  if(job&&job.customerId){
+    pushNotification(job.customerId,{
+      type:'quote',
+      title:'New quote received',
+      body:`${quote.contractorName} quoted $${quote.price} on "${job.title}"`,
+      jobId,
+    });
+  }
   showToast('Quote submitted!','success');
   closeModal();
   renderJobsBoard();
