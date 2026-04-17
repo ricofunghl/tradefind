@@ -424,6 +424,38 @@
 
 <script>
 // ═══════════════════════════════════
+//  API LAYER
+// ═══════════════════════════════════
+const API_BASE = 'http://localhost:3001';
+
+async function api(method, path, body) {
+  const token = localStorage.getItem('tf_token');
+  const res = await fetch(API_BASE + path, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+    },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw err;
+  }
+  return res.json();
+}
+
+// ═══════════════════════════════════
+//  IN-MEMORY STATE
+// ═══════════════════════════════════
+let STATE = {
+  contractors: [],
+  jobs: [],
+  notifications: [],
+  session: null,
+};
+
+// ═══════════════════════════════════
 //  CONSTANTS
 // ═══════════════════════════════════
 const TRADES = [
@@ -594,61 +626,52 @@ const SEED_JOBS = [
 ];
 
 // ═══════════════════════════════════
-//  STORAGE
+//  SESSION MANAGEMENT
 // ═══════════════════════════════════
-function getContractors() { try{return JSON.parse(localStorage.getItem('tf_contractors')||'[]');}catch{return [];} }
-function saveContractors(a) { localStorage.setItem('tf_contractors',JSON.stringify(a)); }
-function getJobs() { try{return JSON.parse(localStorage.getItem('tf_jobs')||'[]');}catch{return [];} }
-function saveJobs(a) { localStorage.setItem('tf_jobs',JSON.stringify(a)); }
+function getSession() { return STATE.session; }
 
-// ── AUTH STORAGE ──
-function getUsers() { try{return JSON.parse(localStorage.getItem('tf_users')||'[]');}catch{return [];} }
-function saveUsers(a) { localStorage.setItem('tf_users',JSON.stringify(a)); }
-function getSession() { try{return JSON.parse(localStorage.getItem('tf_session')||'null');}catch{return null;} }
-function saveSession(o) { localStorage.setItem('tf_session',JSON.stringify(o)); }
-function clearSession() { localStorage.removeItem('tf_session'); }
-function findUserByEmail(email) { return getUsers().find(u=>u.email===email.toLowerCase()); }
-
-function hashString(s) {
-  let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h)^s.charCodeAt(i);
-  return (h>>>0).toString(36);
+function saveSession(token, user) {
+  localStorage.setItem('tf_token', token);
+  STATE.session = { userId: user.userId, name: user.name, email: user.email };
+  localStorage.setItem('tf_session', JSON.stringify(STATE.session));
 }
 
-function createUser({name,email,password,provider}){
-  const user={id:'u'+Date.now(),name,email:email.toLowerCase(),
-    passwordHash:password?hashString(password):'',
-    provider:provider||'local',avatarColor:avatarColor(name),createdAt:new Date().toISOString()};
-  const users=getUsers(); users.push(user); saveUsers(users); return user;
+function clearSession() {
+  localStorage.removeItem('tf_token');
+  localStorage.removeItem('tf_session');
+  STATE.session = null;
+}
+
+function initSession() {
+  try {
+    const stored = JSON.parse(localStorage.getItem('tf_session') || 'null');
+    if (stored && localStorage.getItem('tf_token')) STATE.session = stored;
+  } catch {}
 }
 
 function requireAuth(redirectPath){
-  const sess=getSession();
-  if(!sess){ sessionStorage.setItem('tf_redirect',redirectPath||''); navigate('#/login'); return null; }
+  const sess = getSession();
+  if (!sess) { sessionStorage.setItem('tf_redirect', redirectPath||''); navigate('#/login'); return null; }
   return sess;
 }
 
 // ── NOTIFICATIONS ──
-function getNotifications(){
-  const sess=getSession(); if(!sess)return[];
-  try{return JSON.parse(localStorage.getItem('tf_notifs_'+sess.userId)||'[]');}catch{return[];}
+function getNotifications() { return STATE.notifications; }
+
+async function loadNotifications() {
+  if (!STATE.session) { STATE.notifications = []; return; }
+  try { STATE.notifications = await api('GET', '/api/notifications'); } catch { STATE.notifications = []; }
 }
-function saveNotifications(a){
-  const sess=getSession(); if(!sess)return;
-  localStorage.setItem('tf_notifs_'+sess.userId,JSON.stringify(a));
+
+function unreadCount() { return STATE.notifications.filter(n => !n.read).length; }
+
+async function markAllRead() {
+  if (!STATE.session) return;
+  STATE.notifications.forEach(n => n.read = true);
+  updateNavBell();
+  await api('PUT', '/api/notifications/read').catch(() => {});
 }
-function pushNotification(userId,notif){
-  try{
-    const key='tf_notifs_'+userId;
-    const a=JSON.parse(localStorage.getItem(key)||'[]');
-    a.unshift({id:'n'+Date.now(),...notif,read:false,createdAt:new Date().toISOString()});
-    localStorage.setItem(key,JSON.stringify(a.slice(0,50))); // cap at 50
-  }catch{}
-}
-function markAllRead(){
-  const a=getNotifications().map(n=>({...n,read:true}));
-  saveNotifications(a); updateNavBell();
-}
-function unreadCount(){ return getNotifications().filter(n=>!n.read).length; }
+
 function updateNavBell(){
   const badge=document.getElementById('nav-bell-badge');
   if(!badge)return;
@@ -657,46 +680,13 @@ function updateNavBell(){
   badge.style.display=cnt>0?'flex':'none';
 }
 
-function seed() {
-  if(!localStorage.getItem('tf_contractors')) saveContractors(SEED_CONTRACTORS);
-  if(!localStorage.getItem('tf_jobs')) saveJobs(SEED_JOBS);
+// ── DATA LOADERS ──
+async function loadContractors() {
+  try { STATE.contractors = await api('GET', '/api/contractors'); } catch { STATE.contractors = []; }
 }
 
-function addContractor(o) { const a=getContractors(); a.unshift(o); saveContractors(a); }
-function addJob(o) { const a=getJobs(); a.unshift(o); saveJobs(a); }
-function addQuote(jobId,quote) {
-  const a=getJobs(); const i=a.findIndex(j=>j.id===jobId);
-  if(i===-1)return; a[i].quotes=a[i].quotes||[]; a[i].quotes.push(quote);
-  if(a[i].status==='open') a[i].status='quoted';
-  saveJobs(a);
-}
-function hireContractor(jobId,quoteId) {
-  const a=getJobs(); const i=a.findIndex(j=>j.id===jobId);
-  if(i===-1)return; a[i].status='hired'; a[i].hiredQuoteId=quoteId; saveJobs(a);
-}
-function markCompleted(jobId) {
-  const a=getJobs(); const i=a.findIndex(j=>j.id===jobId);
-  if(i===-1)return; a[i].status='completed'; saveJobs(a);
-}
-function addReview(contractorId,review) {
-  const a=getContractors(); const i=a.findIndex(c=>c.id===contractorId);
-  if(i===-1)return;
-  a[i].reviews=a[i].reviews||[]; a[i].reviews.unshift(review);
-  // recalc rating
-  const ratings=a[i].reviews.map(r=>r.rating);
-  a[i].rating=Math.round((ratings.reduce((x,y)=>x+y,0)/ratings.length)*10)/10;
-  a[i].reviewCount=ratings.length;
-  saveContractors(a);
-}
-function voteHelpful(contractorId,reviewId) {
-  const a=getContractors(); const ci=a.findIndex(c=>c.id===contractorId);
-  if(ci===-1)return;
-  const ri=a[ci].reviews.findIndex(r=>r.id===reviewId);
-  if(ri===-1)return;
-  a[ci].reviews[ri].helpful=(a[ci].reviews[ri].helpful||0)+1;
-  a[ci].reviews[ri].voted=true;
-  saveContractors(a);
-  return a[ci].reviews[ri];
+async function loadJobs() {
+  try { STATE.jobs = await api('GET', '/api/jobs'); } catch { STATE.jobs = []; }
 }
 
 // ═══════════════════════════════════
@@ -795,7 +785,7 @@ function toggleNotifPanel(e){
   closeNavPanels('notif-panel');
   const existing=document.getElementById('notif-panel');
   if(existing){existing.remove();return;}
-  const notifs=getNotifications();
+  const notifs=STATE.notifications;
   const el=document.createElement('div');
   el.id='notif-panel'; el.className='notif-panel';
   el.innerHTML=`
@@ -807,10 +797,10 @@ function toggleNotifPanel(e){
       ${notifs.length===0
         ?`<div class="notif-empty">🔔 No notifications yet.<br>You'll be notified when contractors quote on your jobs.</div>`
         :notifs.map(n=>`
-          <div class="notif-item ${n.read?'':'unread'}" onclick="onNotifClick('${n.id}','${n.link||''}')">
+          <div class="notif-item ${n.read?'':'unread'}" onclick="onNotifClick('${n.id}','${n.jobId?'#/jobs':''}')">
             <div class="notif-dot ${n.read?'read':''}"></div>
             <div>
-              <div class="notif-text">${esc(n.message)}</div>
+              <div class="notif-text">${esc(n.message||n.body||n.title||'')}</div>
               <div class="notif-time">${fmtRelDate(n.createdAt)}</div>
             </div>
           </div>
@@ -835,8 +825,7 @@ document.addEventListener('click',()=>closeNavPanels());
 
 function logout(){
   clearSession();
-  updateNav();
-  showToast('You have been signed out.');
+  closeNavPanels();
   navigate('#/');
 }
 
@@ -880,18 +869,20 @@ function renderLogin(){
   `;
 }
 
-function submitLogin(){
+async function submitLogin(){
   const email=document.getElementById('li-email').value.trim();
   const pass=document.getElementById('li-password').value;
   const errEl=document.getElementById('login-error');
   const showErr=msg=>{errEl.textContent=msg;errEl.classList.add('visible');};
   errEl.classList.remove('visible');
   if(!email||!pass){showErr('Please enter your email and password.');return;}
-  const user=findUserByEmail(email);
-  if(!user){showErr('No account found with that email address.');return;}
-  if(user.provider!=='local'){showErr(`This account uses ${user.provider} sign-in. Use the button above.`);return;}
-  if(hashString(pass)!==user.passwordHash){showErr('Incorrect password. Please try again.');return;}
-  _finishLogin(user);
+  try {
+    const { token, user } = await api('POST','/api/auth/login',{ email, password: pass });
+    saveSession(token, user);
+    _finishLogin(user);
+  } catch(e){
+    showErr(e.error||'Login failed');
+  }
 }
 
 // ═══════════════════════════════════
@@ -930,7 +921,7 @@ function renderRegister(){
   `;
 }
 
-function submitRegister(){
+async function submitRegister(){
   const name=document.getElementById('re-name').value.trim();
   const email=document.getElementById('re-email').value.trim();
   const pass=document.getElementById('re-pass').value;
@@ -941,9 +932,13 @@ function submitRegister(){
   if(!name||!email||!pass||!pass2){showErr('Please fill in all fields.');return;}
   if(pass.length<6){showErr('Password must be at least 6 characters.');return;}
   if(pass!==pass2){showErr('Passwords do not match.');return;}
-  if(findUserByEmail(email)){showErr('An account with that email already exists. Try signing in.');return;}
-  const user=createUser({name,email,password:pass,provider:'local'});
-  _finishLogin(user);
+  try {
+    const { token, user } = await api('POST','/api/auth/register',{ name, email, password: pass });
+    saveSession(token, user);
+    _finishLogin(user);
+  } catch(e){
+    showErr(e.error||'Registration failed');
+  }
 }
 
 // ═══════════════════════════════════
@@ -982,16 +977,19 @@ function openSocialMockModal(provider){
   overlay.addEventListener('click',e=>{if(e.target===overlay)closeModal();});
 }
 
-function loginWithProvider(provider){
+async function loginWithProvider(provider){
   const m=SOCIAL_MOCK[provider]; if(!m)return;
   closeModal();
-  let user=findUserByEmail(m.email);
-  if(!user) user=createUser({name:m.name,email:m.email,password:null,provider});
-  _finishLogin(user);
+  try {
+    const { token, user } = await api('POST','/api/auth/social',{ provider, name: m.name, email: m.email });
+    saveSession(token, user);
+    _finishLogin(user);
+  } catch(e){
+    showToast('Social login failed','error');
+  }
 }
 
 function _finishLogin(user){
-  saveSession({userId:user.id,name:user.name,email:user.email,provider:user.provider,loginAt:new Date().toISOString()});
   updateNav();
   showToast(`Welcome, ${user.name.split(' ')[0]}! 👋`,'success');
   const redirect=sessionStorage.getItem('tf_redirect');
@@ -1054,29 +1052,45 @@ function interstitialPostRequest(tradeId){
   }
 }
 
-function router(){
+async function router(){
+  initSession();
   const{path,params}=getHashParts();
   if(params.trade&&!filtersState.trades.includes(params.trade))filtersState.trades=[params.trade];
   if(params.location&&!filtersState.location)filtersState.location=params.location;
   closeModal();
   updateNav();
-  if(!path||path==='#/'||path==='#')renderHome();
-  else if(path==='#/listings')renderListings();
-  else if(path==='#/post')renderPost();
-  else if(path==='#/request'){if(!requireAuth('request'+(getHashParts().params.trade?'?trade='+getHashParts().params.trade:'')))return;renderJobRequest();}
-  else if(path==='#/jobs')renderJobsBoard();
-  else if(path==='#/login')renderLogin();
-  else if(path==='#/register')renderRegister();
-  else renderHome();
+  if(!path||path==='#/'||path==='#'){
+    await Promise.all([loadContractors(),loadJobs(),loadNotifications()]);
+    renderHome();
+  } else if(path==='#/listings'){
+    await loadContractors();
+    renderListings();
+  } else if(path==='#/post'){
+    renderPost();
+  } else if(path==='#/request'){
+    if(!requireAuth('request'+(params.trade?'?trade='+params.trade:'')))return;
+    renderJobRequest();
+  } else if(path==='#/jobs'){
+    await Promise.all([loadJobs(),loadNotifications()]);
+    renderJobsBoard();
+  } else if(path==='#/login'){
+    renderLogin();
+  } else if(path==='#/register'){
+    renderRegister();
+  } else {
+    await Promise.all([loadContractors(),loadJobs(),loadNotifications()]);
+    renderHome();
+  }
+  updateNavBell();
 }
-window.addEventListener('hashchange',router);
+window.addEventListener('hashchange',()=>router());
 
 // ═══════════════════════════════════
 //  HOME
 // ═══════════════════════════════════
 function renderHome(){
-  const total=getContractors().length;
-  const jobs=getJobs();
+  const total=STATE.contractors.length;
+  const jobs=STATE.jobs;
   const openJobs=jobs.filter(j=>j.status==='open').length;
   document.getElementById('app').innerHTML=`
     <div class="hero">
@@ -1147,7 +1161,7 @@ function renderHome(){
           <div><div class="section-title" style="margin-bottom:.2rem;">Open Jobs</div><div style="color:var(--muted);font-size:.9rem;">${openJobs} jobs waiting for quotes</div></div>
           <a class="btn btn-outline btn-sm" onclick="navigate('#/jobs')">View All Jobs →</a>
         </div>
-        <div>${getJobs().filter(j=>j.status==='open').slice(0,3).map(j=>renderJobCardMini(j)).join('')}</div>
+        <div>${STATE.jobs.filter(j=>j.status==='open').slice(0,3).map(j=>renderJobCardMini(j)).join('')}</div>
       </div>
     </div>`:''}
 
@@ -1213,7 +1227,7 @@ function renderListings(){
   const{params}=getHashParts();
   if(params.trade&&!filtersState.trades.includes(params.trade))filtersState.trades=[params.trade];
   if(params.location&&!filtersState.location)filtersState.location=params.location;
-  let all=getContractors();
+  let all=STATE.contractors;
   let filtered=applyFilters(all);
   const cardsHtml=filtered.length===0
     ?`<div class="empty-state" style="grid-column:1/-1"><div class="big-icon">🔍</div><h3>No contractors found</h3><p>Try adjusting your filters or <a href="#/post" onclick="navigate('#/post');return false;">post the first listing</a> in this category.</p></div>`
@@ -1254,7 +1268,7 @@ function renderListings(){
           <div class="listings-main">
             <button class="filter-toggle" onclick="openSidebar()">☰ Filters ${getActiveFilterCount()>0?`<span style="background:var(--orange);color:#fff;border-radius:99px;padding:.1rem .45rem;font-size:.7rem;">${getActiveFilterCount()}</span>`:''}</button>
             <div class="results-bar">
-              <span class="results-count">Showing <strong>${filtered.length}</strong> of <strong>${all.length}</strong> contractors</span>
+              <span class="results-count">Showing <strong>${filtered.length}</strong> of <strong>${STATE.contractors.length}</strong> contractors</span>
               <select class="sort-select" onchange="onSortChange(this.value)">
                 <option value="featured" ${filtersState.sort==='featured'?'selected':''}>Featured First</option>
                 <option value="rating"   ${filtersState.sort==='rating'?'selected':''}>Highest Rated</option>
@@ -1304,14 +1318,14 @@ function openSidebar(){document.getElementById('sidebar').classList.add('open');
 function closeSidebar(){const s=document.getElementById('sidebar');const o=document.getElementById('sidebar-overlay');if(s)s.classList.remove('open');if(o)o.classList.remove('open');}
 
 function refreshCards(){
-  const filtered=applyFilters(getContractors());
+  const filtered=applyFilters(STATE.contractors);
   const g=document.getElementById('cards-grid');
   if(!g)return;
   g.innerHTML=filtered.length===0
     ?`<div class="empty-state" style="grid-column:1/-1"><div class="big-icon">🔍</div><h3>No contractors found</h3></div>`
     :filtered.map(c=>renderCard(c)).join('');
   const rc=document.querySelector('.results-count');
-  if(rc)rc.innerHTML=`Showing <strong>${filtered.length}</strong> of <strong>${getContractors().length}</strong> contractors`;
+  if(rc)rc.innerHTML=`Showing <strong>${filtered.length}</strong> of <strong>${STATE.contractors.length}</strong> contractors`;
 }
 
 function renderCard(c){
@@ -1337,7 +1351,7 @@ function renderCard(c){
         ${c.completedJobs?`<span class="tag tag-green">✓ ${c.completedJobs} jobs done</span>`:''}
         ${c.responseRate?`<span class="response-pill">⚡ ${c.responseRate}% response</span>`:''}
       </div>
-      <div class="card-desc">${esc(c.description)}</div>
+      <div class="card-desc">${esc(c.bio||c.description||'')}</div>
       ${tags?`<div class="tags">${tags}</div>`:''}
       <div class="card-actions">
         <button class="btn btn-outline btn-sm" onclick="openModal('${c.id}')">View Profile</button>
@@ -1355,7 +1369,7 @@ let starRatings={overall:0,quality:0,punctuality:0,communication:0,value:0};
 
 function openModal(id){
   currentModalId=id;
-  const c=getContractors().find(x=>x.id===id);
+  const c=STATE.contractors.find(x=>x.id===id);
   if(!c)return;
   const t=tradeInfo(c.trade);
   const bg=avatarColor(c.name);
@@ -1412,7 +1426,7 @@ function openModal(id){
           <div class="stat-item"><div class="val">${reviews.length}</div><div class="lbl">Reviews</div></div>
         </div>
 
-        <p style="font-size:.9rem;line-height:1.7;color:var(--muted);">${esc(c.description)}</p>
+        <p style="font-size:.9rem;line-height:1.7;color:var(--muted);">${esc(c.bio||c.description||'')}</p>
         ${c.tags&&c.tags.length?`<div class="tags" style="margin-top:.75rem;">${c.tags.map(tag=>`<span class="tag">${esc(tag)}</span>`).join('')}</div>`:''}
 
         ${reviews.length>0?`
@@ -1488,10 +1502,11 @@ function openModal(id){
 function renderReviewCard(r,contractorId){
   const bg=avatarColor(r.author);
   const ini=r.author.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
-  const dimTags=['quality','punctuality','communication','value']
-    .filter(d=>r[d])
-    .map(d=>`<span class="review-dim-tag">${d.charAt(0).toUpperCase()+d.slice(1)}: ${r[d]}★</span>`)
-    .join('');
+  const reviewText=r.text||r.comment||'';
+  const reviewDate=r.postedAt||r.date||'';
+  const helpfulVoters=r.helpfulVoters||[];
+  const sess=getSession();
+  const alreadyVoted=sess&&helpfulVoters.includes(sess.userId);
   return`
     <div class="review-card" id="rc-${esc(r.id)}">
       <div class="review-header">
@@ -1501,17 +1516,14 @@ function renderReviewCard(r,contractorId){
             <div class="review-author">${esc(r.author)}</div>
             <div style="display:flex;gap:.4rem;align-items:center;margin-top:.1rem;">
               ${renderStarsFull(r.rating)}
-              <span class="review-date">${fmtDate(r.date)}</span>
-              ${r.verified?'<span class="verified-badge">✓ Verified Job</span>':''}
+              <span class="review-date">${fmtDate(reviewDate)}</span>
             </div>
           </div>
         </div>
       </div>
-      ${dimTags?`<div class="review-dims">${dimTags}</div>`:''}
-      <div class="review-comment">${esc(r.comment)}</div>
-      ${r.response?`<div class="contractor-response"><div class="resp-label">Response from contractor</div><p>${esc(r.response)}</p></div>`:''}
+      <div class="review-comment">${esc(reviewText)}</div>
       <div class="review-footer">
-        <button class="helpful-btn ${r.voted?'voted':''}" onclick="onHelpfulVote('${contractorId}','${r.id}',this)" ${r.voted?'disabled':''}>
+        <button class="helpful-btn ${alreadyVoted?'voted':''}" onclick="onHelpfulVote('${contractorId}','${r.id}',this)" ${alreadyVoted?'disabled':''}>
           👍 Helpful (${r.helpful||0})
         </button>
         <span style="font-size:.75rem;color:var(--muted);">${r.helpful||0} found this helpful</span>
@@ -1536,42 +1548,43 @@ function setStarDim(dim,n){
   picker.querySelectorAll('span').forEach((s,i)=>s.classList.toggle('active',i<n));
 }
 
-function onHelpfulVote(contractorId,reviewId,btn){
-  const updated=voteHelpful(contractorId,reviewId);
-  if(!updated)return;
-  btn.classList.add('voted');
-  btn.disabled=true;
-  btn.innerHTML=`👍 Helpful (${updated.helpful})`;
-  btn.closest('.review-footer').querySelector('span').textContent=`${updated.helpful} found this helpful`;
+async function onHelpfulVote(contractorId,reviewId,btn){
+  try {
+    const { helpful } = await api('POST', `/api/contractors/${contractorId}/reviews/${reviewId}/helpful`);
+    btn.textContent=`👍 Helpful (${helpful})`;
+    btn.classList.add('voted');
+    btn.disabled=true;
+    btn.closest('.review-footer').querySelector('span').textContent=`${helpful} found this helpful`;
+  } catch(e) {
+    if(e.error==='Already voted'){
+      showToast('You already voted this helpful','error');
+    } else {
+      showToast(e.error||'Failed to vote','error');
+    }
+  }
 }
 
-function submitReview(id){
-  const nameEl=document.getElementById('rf-name');
+async function submitReview(id){
   const commentEl=document.getElementById('rf-comment');
-  const nameRow=document.getElementById('rf-name-row');
   const commentRow=document.getElementById('rf-comment-row');
   let valid=true;
-  if(!nameEl.value.trim()){nameRow.classList.add('error');valid=false;}else nameRow.classList.remove('error');
   if(!commentEl.value.trim()){commentRow.classList.add('error');valid=false;}else commentRow.classList.remove('error');
   if(starRatings.overall===0){showToast('Please select an overall star rating.','error');return;}
   if(!valid)return;
-
-  const review={
-    id:'r'+Date.now(),
-    author:nameEl.value.trim(),
-    rating:starRatings.overall,
-    quality:starRatings.quality||null,
-    punctuality:starRatings.punctuality||null,
-    communication:starRatings.communication||null,
-    value:starRatings.value||null,
-    comment:commentEl.value.trim(),
-    date:new Date().toISOString().split('T')[0],
-    verified:false,helpful:0,voted:false,response:null,
-  };
-  addReview(id,review);
-  showToast('Review submitted — thank you!','success');
-  closeModal();
-  openModal(id);
+  const sess=getSession();
+  if(!sess){showToast('Please sign in to leave a review.','error');return;}
+  try {
+    await api('POST',`/api/contractors/${id}/reviews`,{
+      text:commentEl.value.trim(),
+      rating:starRatings.overall,
+    });
+    showToast('Review submitted — thank you!','success');
+    closeModal();
+    await loadContractors();
+    openModal(id);
+  } catch(e){
+    showToast(e.error||'Failed to submit review','error');
+  }
 }
 
 // ═══════════════════════════════════
@@ -1700,7 +1713,7 @@ function selectUrgency(u){
   document.querySelectorAll('.urgency-opt').forEach(el=>el.classList.toggle('selected',el.dataset.urgency===u));
 }
 
-function submitJobRequest(){
+async function submitJobRequest(){
   const fields=[{id:'jf-title',row:'jf-title-row'},{id:'jf-trade',row:'jf-trade-row'},{id:'jf-location',row:'jf-location-row'},{id:'jf-desc',row:'jf-desc-row'}];
   let valid=true;
   fields.forEach(({id,row})=>{
@@ -1709,25 +1722,24 @@ function submitJobRequest(){
     if(!el.value.trim()){rowEl.classList.add('error');valid=false;}else rowEl.classList.remove('error');
   });
   if(!valid){showToast('Please fill in all required fields.','error');return;}
-  const sess=getSession();
-  const job={
-    id:'j'+Date.now(),
-    title:document.getElementById('jf-title').value.trim(),
-    trade:document.getElementById('jf-trade').value,
-    location:document.getElementById('jf-location').value.trim(),
-    description:document.getElementById('jf-desc').value.trim(),
-    budget:document.getElementById('jf-budget').value.trim()||'open',
-    urgency:selectedUrgency,
-    customerName:sess?sess.name:'Anonymous',
-    customerId:sess?sess.userId:null,
-    photos:jobPhotos.slice(),
-    postedAt:new Date().toISOString().split('T')[0],
-    status:'open',
-    quotes:[],
-  };
-  addJob(job);
-  showToast('Job posted! Contractors will send you quotes.','success');
-  setTimeout(()=>navigate('#/jobs'),500);
+  const sess=requireAuth('#/request');
+  if(!sess)return;
+  try {
+    await api('POST','/api/jobs',{
+      title:document.getElementById('jf-title').value.trim(),
+      trade:document.getElementById('jf-trade').value,
+      location:document.getElementById('jf-location').value.trim(),
+      description:document.getElementById('jf-desc').value.trim(),
+      budget:document.getElementById('jf-budget').value.trim()||'open',
+      urgency:selectedUrgency,
+      photos:jobPhotos.slice(),
+    });
+    showToast('Job posted! Contractors will send you quotes.','success');
+    jobPhotos=[];
+    navigate('#/jobs');
+  } catch(e){
+    showToast(e.error||'Failed to post request','error');
+  }
 }
 
 // ═══════════════════════════════════
@@ -1735,16 +1747,9 @@ function submitJobRequest(){
 // ═══════════════════════════════════
 let jobsTab='open';
 
-function getVisibleJobs(){
-  const sess=getSession();
-  // Logged-in users see only their own jobs + seed jobs (customerId===null)
-  // Logged-out users see only seed jobs
-  return getJobs().filter(j=>j.customerId===null||(sess&&j.customerId===sess.userId));
-}
-
 function renderJobsBoard(){
   const sess=getSession();
-  const jobs=getVisibleJobs();
+  const jobs=STATE.jobs;
   document.getElementById('app').innerHTML=`
     <div class="jobs-layout">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
@@ -1766,7 +1771,7 @@ function renderJobsBoard(){
 
 function switchJobTab(t){
   jobsTab=t;
-  const jobs=getVisibleJobs();
+  const jobs=STATE.jobs;
   document.querySelectorAll('.jobs-tab').forEach(el=>el.classList.toggle('active',el.textContent.trim().toLowerCase().startsWith(t)));
   document.getElementById('jobs-list').innerHTML=renderJobsList(jobs);
 }
@@ -1850,14 +1855,24 @@ function renderQuoteCard(q,j){
   `;
 }
 
-function doHire(jobId,quoteId){hireContractor(jobId,quoteId);showToast('Contractor hired!','success');renderJobsBoard();}
-function completeJob(jobId){markCompleted(jobId);showToast('Job marked as completed.','success');renderJobsBoard();}
+async function doHire(jobId,quoteId){
+  await api('PUT',`/api/jobs/${jobId}/hire/${quoteId}`);
+  showToast('Contractor hired!','success');
+  await loadJobs();
+  renderJobsBoard();
+}
+async function completeJob(jobId){
+  await api('PUT',`/api/jobs/${jobId}/complete`);
+  showToast('Job marked as completed.','success');
+  await loadJobs();
+  renderJobsBoard();
+}
 
 // ═══════════════════════════════════
 //  QUOTE MODAL
 // ═══════════════════════════════════
 function openQuoteModal(jobId){
-  const job=getJobs().find(j=>j.id===jobId);
+  const job=STATE.jobs.find(j=>j.id===jobId);
   if(!job)return;
   const overlay=document.createElement('div');
   overlay.className='modal-overlay';
@@ -1885,7 +1900,7 @@ function openQuoteModal(jobId){
   overlay.addEventListener('click',e=>{if(e.target===overlay)closeModal();});
 }
 
-function submitQuote(jobId){
+async function submitQuote(jobId){
   const nameEl=document.getElementById('qf-name');
   const priceEl=document.getElementById('qf-price');
   const etaEl=document.getElementById('qf-eta');
@@ -1900,31 +1915,24 @@ function submitQuote(jobId){
 
   const cidEl=document.getElementById('qf-cid');
   const cid=cidEl.value.trim();
-  const matchedContractor=cid?getContractors().find(c=>c.id===cid):null;
+  const matchedContractor=cid?STATE.contractors.find(c=>c.id===cid):null;
 
-  const quote={
-    id:'q'+Date.now(),
-    contractorId:cid||'ext',
-    contractorName:nameEl.value.trim(),
-    price:parseFloat(priceEl.value),
-    eta:etaEl.value.trim(),
-    message:msgEl.value.trim(),
-    rating:matchedContractor?matchedContractor.rating:null,
-    postedAt:new Date().toISOString().split('T')[0],
-  };
-  addQuote(jobId,quote);
-  const job=getJobs().find(j=>j.id===jobId);
-  if(job&&job.customerId){
-    pushNotification(job.customerId,{
-      type:'quote',
-      title:'New quote received',
-      body:`${quote.contractorName} quoted $${quote.price} on "${job.title}"`,
-      jobId,
+  try {
+    await api('POST',`/api/jobs/${jobId}/quotes`,{
+      contractorId:cid||'ext',
+      contractorName:nameEl.value.trim(),
+      price:parseFloat(priceEl.value),
+      eta:etaEl.value.trim(),
+      message:msgEl.value.trim(),
+      rating:matchedContractor?matchedContractor.rating:null,
     });
+    showToast('Quote submitted!','success');
+    closeModal();
+    await loadJobs();
+    renderJobsBoard();
+  } catch(e){
+    showToast(e.error||'Failed to submit quote','error');
   }
-  showToast('Quote submitted!','success');
-  closeModal();
-  renderJobsBoard();
 }
 
 // ═══════════════════════════════════
@@ -1978,27 +1986,29 @@ function renderPost(){
   `;
 }
 
-function submitPost(){
+async function submitPost(){
   const fields=[{id:'pf-name',row:'pf-name-row'},{id:'pf-trade',row:'pf-trade-row'},{id:'pf-location',row:'pf-location-row'},{id:'pf-phone',row:'pf-phone-row'},{id:'pf-email',row:'pf-email-row'},{id:'pf-desc',row:'pf-desc-row'}];
   let valid=true;
   fields.forEach(({id,row})=>{const el=document.getElementById(id);const r=document.getElementById(row);if(!el.value.trim()){r.classList.add('error');valid=false;}else r.classList.remove('error');});
   if(!valid){showToast('Please fill in all required fields.','error');return;}
-  const tags=Array.from(document.querySelectorAll('.tags-check input:checked')).map(e=>e.value);
-  const contractor={
-    id:'c'+Date.now(),name:document.getElementById('pf-name').value.trim(),
-    trade:document.getElementById('pf-trade').value,location:document.getElementById('pf-location').value.trim(),
-    phone:document.getElementById('pf-phone').value.trim(),email:document.getElementById('pf-email').value.trim(),
-    website:document.getElementById('pf-website').value.trim(),
-    description:document.getElementById('pf-desc').value.trim(),
-    yearsExp:parseInt(document.getElementById('pf-years').value)||0,
-    rating:0,reviewCount:0,reviews:[],completedJobs:0,responseRate:null,verified:false,
-    tags,featured:document.getElementById('pf-featured').checked,
-    postedAt:new Date().toISOString().split('T')[0],
-  };
-  addContractor(contractor);
-  showToast('Your listing is live! Welcome to TradeFind.','success');
-  filtersState={trades:[contractor.trade],location:'',minRating:0,sort:'newest'};
-  setTimeout(()=>navigate('#/listings'),400);
+  const sess=requireAuth('#/post');
+  if(!sess)return;
+  const trade=document.getElementById('pf-trade').value;
+  try {
+    await api('POST','/api/contractors',{
+      name:document.getElementById('pf-name').value.trim(),
+      trade,
+      location:document.getElementById('pf-location').value.trim(),
+      phone:document.getElementById('pf-phone').value.trim(),
+      email:document.getElementById('pf-email').value.trim(),
+      bio:document.getElementById('pf-desc').value.trim(),
+    });
+    showToast('Your listing is live! Welcome to TradeFind.','success');
+    filtersState={trades:[trade],location:'',minRating:0,sort:'newest'};
+    navigate('#/listings');
+  } catch(e){
+    showToast(e.error||'Failed to publish listing','error');
+  }
 }
 
 // ═══════════════════════════════════
@@ -2050,10 +2060,10 @@ function showToast(msg,type=''){
 // ═══════════════════════════════════
 //  INIT
 // ═══════════════════════════════════
-seed();
-updateNav();
-if(!window.location.hash||window.location.hash==='#')window.location.hash='#/';
-router();
+window.addEventListener('load', () => {
+  if (!window.location.hash || window.location.hash === '#') window.location.hash = '#/';
+  router();
+});
 </script>
 </body>
 </html>
