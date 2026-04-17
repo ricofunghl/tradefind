@@ -832,12 +832,6 @@ function logout(){
 // ═══════════════════════════════════
 //  AUTH — LOGIN
 // ═══════════════════════════════════
-const SOCIAL_MOCK={
-  google:    {name:'Alex Demo',   email:'alex.demo@gmail.com',    logo:'🇬',  color:'#4285F4', label:'Google'},
-  apple:     {name:'Sam Apple',   email:'sam.apple@icloud.com',   logo:'🍎',  color:'#000000', label:'Apple'},
-  microsoft: {name:'Jordan MS',   email:'jordan.ms@outlook.com',  logo:'🪟',  color:'#0078D4', label:'Microsoft'},
-};
-
 function renderLogin(){
   updateNav();
   document.getElementById('app').innerHTML=`
@@ -847,13 +841,13 @@ function renderLogin(){
         <h2>Welcome back</h2>
         <p class="sub">Sign in to post job requests and manage your quotes.</p>
 
-        <button class="social-btn" onclick="openSocialMockModal('google')">
+        <button class="social-btn" onclick="startOAuth('google')">
           <span class="s-icon">🇬</span> Continue with Google
         </button>
-        <button class="social-btn social-btn-apple" onclick="openSocialMockModal('apple')">
+        <button class="social-btn social-btn-apple" onclick="startOAuth('apple')">
           <span class="s-icon">🍎</span> Continue with Apple
         </button>
-        <button class="social-btn" onclick="openSocialMockModal('microsoft')">
+        <button class="social-btn" onclick="startOAuth('microsoft')">
           <span class="s-icon">🪟</span> Continue with Microsoft
         </button>
 
@@ -897,13 +891,13 @@ function renderRegister(){
         <h2>Create your account</h2>
         <p class="sub">Free to join. Post job requests and get quotes from local tradespeople.</p>
 
-        <button class="social-btn" onclick="openSocialMockModal('google')">
+        <button class="social-btn" onclick="startOAuth('google')">
           <span class="s-icon">🇬</span> Sign up with Google
         </button>
-        <button class="social-btn social-btn-apple" onclick="openSocialMockModal('apple')">
+        <button class="social-btn social-btn-apple" onclick="startOAuth('apple')">
           <span class="s-icon">🍎</span> Sign up with Apple
         </button>
-        <button class="social-btn" onclick="openSocialMockModal('microsoft')">
+        <button class="social-btn" onclick="startOAuth('microsoft')">
           <span class="s-icon">🪟</span> Sign up with Microsoft
         </button>
 
@@ -942,50 +936,43 @@ async function submitRegister(){
 }
 
 // ═══════════════════════════════════
-//  AUTH — SOCIAL MOCK
+//  AUTH — OAUTH
 // ═══════════════════════════════════
-function openSocialMockModal(provider){
-  const m=SOCIAL_MOCK[provider]; if(!m)return;
-  closeModal();
-  const overlay=document.createElement('div');
-  overlay.className='modal-overlay'; overlay.id='modal-overlay';
-  overlay.innerHTML=`
-    <div class="modal" style="max-width:380px;">
-      <div class="mock-provider-header" style="background:${m.color}20;border-bottom:1px solid ${m.color}30;">
-        <span class="mock-provider-logo">${m.logo}</span>
-        <strong style="font-size:1rem;">Sign in with ${m.label}</strong>
-      </div>
-      <div class="modal-body" style="padding:1.25rem 1.5rem 1.5rem;">
-        <p style="font-size:.85rem;color:var(--muted);margin-bottom:.75rem;">Choose an account to continue to TradeFind.</p>
-        <div class="mock-account-row">
-          <div class="avatar" style="background:${avatarColor(m.name)};width:40px;height:40px;font-size:.85rem;flex-shrink:0;">${initials(m.name)}</div>
-          <div class="mock-account-info">
-            <div class="mock-name">${esc(m.name)}</div>
-            <div class="mock-email">${esc(m.email)}</div>
-          </div>
-        </div>
-        <button class="btn" style="width:100%;justify-content:center;background:${m.color};color:#fff;margin-bottom:.6rem;" onclick="loginWithProvider('${provider}')">
-          Continue as ${esc(m.name)}
-        </button>
-        <div style="text-align:center;font-size:.78rem;color:var(--muted);cursor:default;">Use a different account ›</div>
-        <p class="mock-disclaimer">⚠️ This is a simulated sign-in for demo purposes only.</p>
-      </div>
-    </div>
-  `;
-  document.getElementById('modal-root').appendChild(overlay);
-  document.body.style.overflow='hidden';
-  overlay.addEventListener('click',e=>{if(e.target===overlay)closeModal();});
+function startOAuth(provider) {
+  const h = window.location.hash;
+  if (h && h !== '#/login' && h !== '#/register') {
+    sessionStorage.setItem('tf_redirect', h.replace('#/', ''));
+  }
+  window.location.href = API_BASE + '/api/auth/' + provider;
 }
 
-async function loginWithProvider(provider){
-  const m=SOCIAL_MOCK[provider]; if(!m)return;
-  closeModal();
+function handleOAuthCallback(params) {
+  const token = params.token;
+  const error = params.error;
+  if (error) {
+    const msgs = {
+      google_failed:    'Google sign-in was cancelled.',
+      microsoft_failed: 'Microsoft sign-in was cancelled.',
+      apple_failed:     'Apple sign-in was cancelled.',
+      state_mismatch:   'Sign-in security check failed. Please try again.',
+      google_error:     'Google sign-in error. Please try again.',
+      microsoft_error:  'Microsoft sign-in error. Please try again.',
+      apple_error:      'Apple sign-in error. Please try again.',
+    };
+    showToast(msgs[error] || 'Sign-in failed. Please try again.', 'error');
+    navigate('#/login');
+    return;
+  }
+  if (!token) { showToast('Sign-in failed: no token received.', 'error'); navigate('#/login'); return; }
   try {
-    const { token, user } = await api('POST','/api/auth/social',{ provider, name: m.name, email: m.email });
-    saveSession(token, user);
-    _finishLogin(user);
-  } catch(e){
-    showToast('Social login failed','error');
+    const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(b64));
+    saveSession(token, { userId: payload.userId, name: payload.name, email: payload.email });
+    history.replaceState(null, '', window.location.pathname);
+    _finishLogin({ name: payload.name });
+  } catch {
+    showToast('Sign-in failed: invalid token.', 'error');
+    navigate('#/login');
   }
 }
 
@@ -1077,6 +1064,15 @@ async function router(){
     renderLogin();
   } else if(path==='#/register'){
     renderRegister();
+  } else if(path==='#/auth-callback') {
+    // Parse query params from hash fragment e.g. #/auth-callback?token=xxx
+    const qp = {};
+    const hashFull = window.location.hash; // e.g. #/auth-callback?token=xxx
+    const qIdx = hashFull.indexOf('?');
+    if (qIdx !== -1) {
+      new URLSearchParams(hashFull.slice(qIdx + 1)).forEach((v, k) => { qp[k] = v; });
+    }
+    handleOAuthCallback(qp);
   } else {
     await Promise.all([loadContractors(),loadJobs(),loadNotifications()]);
     renderHome();

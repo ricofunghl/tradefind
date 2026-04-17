@@ -1,3 +1,4 @@
 node_modules/
 tradefind.db
 uploads/
+.env

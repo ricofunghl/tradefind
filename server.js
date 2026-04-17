@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -5,17 +7,34 @@ const multer = require('multer');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const initSqlJs = require('sql.js');
+const session = require('express-session');
+const passport = require('passport');
+const { Strategy: GoogleStrategy } = require('passport-google-oauth20');
+const appleSignin = require('apple-signin-auth');
 
-const PORT = 3001;
-const JWT_SECRET = 'tradefind-dev-secret';
+const PORT = process.env.PORT || 3001;
+const JWT_SECRET = process.env.JWT_SECRET || 'tradefind-dev-secret-change-me';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 const DB_PATH = path.join(__dirname, 'tradefind.db');
 
 const app = express();
 
 // ── Middleware ──
-app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
+app.use(cors({
+  origin: [FRONTEND_URL, 'https://appleid.apple.com'],
+  credentials: true,
+}));
 app.use(express.json({ limit: '20mb' }));
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'dev-session-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false, httpOnly: true, sameSite: 'lax', maxAge: 10 * 60 * 1000 },
+}));
+app.use(passport.initialize());
 
 // Uploads directory
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -215,6 +234,8 @@ function initSchema() {
       created_at TEXT DEFAULT (datetime('now'))
     )
   `);
+  // Migration: add provider_id column if it doesn't exist
+  try { db.run('ALTER TABLE users ADD COLUMN provider_id TEXT'); saveDb(); } catch {}
   saveDb();
 }
 
@@ -297,6 +318,182 @@ function seedData() {
   saveDb();
   console.log('Seed data inserted.');
 }
+
+// ═══════════════════════════════════
+//  OAUTH HELPERS
+// ═══════════════════════════════════
+function upsertSocialUser(provider, providerId, name, email) {
+  // Look up by provider + provider_id first
+  let row = dbGet('SELECT * FROM users WHERE provider = ? AND provider_id = ?', [provider, providerId]);
+  if (!row && email) {
+    // Fall back to matching by email
+    row = dbGet('SELECT * FROM users WHERE email = ?', [email.toLowerCase()]);
+    if (row) {
+      dbRun('UPDATE users SET provider = ?, provider_id = ? WHERE id = ?', [provider, providerId, row.id]);
+      row = dbGet('SELECT * FROM users WHERE id = ?', [row.id]);
+    }
+  }
+  if (!row) {
+    const id = uid();
+    const emailVal = email ? email.toLowerCase() : `${provider}-${providerId}@noreply.tradefind`;
+    dbRun('INSERT INTO users (id, name, email, password_hash, provider, provider_id) VALUES (?,?,?,NULL,?,?)',
+      [id, name, emailVal, provider, providerId]);
+    row = dbGet('SELECT * FROM users WHERE id = ?', [id]);
+  }
+  return row;
+}
+
+function getAppleClientSecret() {
+  const privateKey = (process.env.APPLE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
+  return jwt.sign({}, privateKey, {
+    algorithm: 'ES256',
+    expiresIn: '5m',
+    audience: 'https://appleid.apple.com',
+    issuer: process.env.APPLE_TEAM_ID,
+    subject: process.env.APPLE_CLIENT_ID,
+    keyid: process.env.APPLE_KEY_ID,
+  });
+}
+
+function redirectWithToken(res, user) {
+  const token = makeToken(user);
+  res.redirect(`${FRONTEND_URL}/#/auth-callback?token=${encodeURIComponent(token)}`);
+}
+
+// ── Passport Google ──────────────────────────────────────────────────
+passport.use(new GoogleStrategy({
+  clientID: process.env.GOOGLE_CLIENT_ID || 'not-set',
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'not-set',
+  callbackURL: 'http://localhost:3001/api/auth/google/callback',
+}, (accessToken, refreshToken, profile, done) => {
+  try {
+    const email = profile.emails?.[0]?.value || null;
+    const name = profile.displayName || 'Google User';
+    const user = upsertSocialUser('google', profile.id, name, email);
+    done(null, user);
+  } catch (e) { done(e); }
+}));
+passport.serializeUser((user, done) => done(null, user.id));
+passport.deserializeUser((id, done) => {
+  const row = dbGet('SELECT * FROM users WHERE id = ?', [id]);
+  done(null, row);
+});
+
+// ═══════════════════════════════════
+//  OAUTH ROUTES
+// ═══════════════════════════════════
+
+// ── Google OAuth ─────────────────────────────────────────────────────
+app.get('/api/auth/google', (req, res, next) => {
+  const state = crypto.randomBytes(16).toString('hex');
+  req.session.oauthState = state;
+  passport.authenticate('google', { scope: ['profile', 'email'], state, session: false })(req, res, next);
+});
+
+app.get('/api/auth/google/callback',
+  passport.authenticate('google', { session: false, failureRedirect: `${FRONTEND_URL}/#/login?error=google_failed` }),
+  (req, res) => {
+    if (req.query.state !== req.session.oauthState) {
+      return res.redirect(`${FRONTEND_URL}/#/login?error=state_mismatch`);
+    }
+    req.session.oauthState = null;
+    redirectWithToken(res, req.user);
+  }
+);
+
+// ── Microsoft OAuth ──────────────────────────────────────────────────
+app.get('/api/auth/microsoft', (req, res) => {
+  const state = crypto.randomBytes(16).toString('hex');
+  req.session.oauthState = state;
+  const params = new URLSearchParams({
+    client_id: process.env.MICROSOFT_CLIENT_ID || 'not-set',
+    response_type: 'code',
+    redirect_uri: 'http://localhost:3001/api/auth/microsoft/callback',
+    scope: 'openid profile email User.Read',
+    state,
+    response_mode: 'query',
+  });
+  res.redirect(`https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params}`);
+});
+
+app.get('/api/auth/microsoft/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+  if (error || !code) return res.redirect(`${FRONTEND_URL}/#/login?error=microsoft_failed`);
+  if (state !== req.session.oauthState) return res.redirect(`${FRONTEND_URL}/#/login?error=state_mismatch`);
+  req.session.oauthState = null;
+  try {
+    const tokenRes = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: process.env.MICROSOFT_CLIENT_ID || '',
+        client_secret: process.env.MICROSOFT_CLIENT_SECRET || '',
+        code,
+        redirect_uri: 'http://localhost:3001/api/auth/microsoft/callback',
+        grant_type: 'authorization_code',
+      }),
+    });
+    const tokens = await tokenRes.json();
+    if (!tokens.access_token) throw new Error('No access_token from Microsoft');
+    const profileRes = await fetch('https://graph.microsoft.com/v1.0/me', {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    });
+    const profile = await profileRes.json();
+    const user = upsertSocialUser('microsoft', profile.id,
+      profile.displayName || 'Microsoft User',
+      profile.mail || profile.userPrincipalName || null);
+    redirectWithToken(res, user);
+  } catch (err) {
+    console.error('Microsoft OAuth error:', err.message);
+    res.redirect(`${FRONTEND_URL}/#/login?error=microsoft_error`);
+  }
+});
+
+// ── Apple Sign In ────────────────────────────────────────────────────
+app.get('/api/auth/apple', (req, res) => {
+  const state = crypto.randomBytes(16).toString('hex');
+  req.session.oauthState = state;
+  const params = new URLSearchParams({
+    client_id: process.env.APPLE_CLIENT_ID || 'not-set',
+    redirect_uri: 'http://localhost:3001/api/auth/apple/callback',
+    response_type: 'code id_token',
+    scope: 'name email',
+    response_mode: 'form_post',
+    state,
+  });
+  res.redirect(`https://appleid.apple.com/auth/authorize?${params}`);
+});
+
+app.post('/api/auth/apple/callback',
+  cors({ origin: true, credentials: false }),
+  express.urlencoded({ extended: true }),
+  async (req, res) => {
+    const { code, id_token, state, error, user: userJson } = req.body;
+    if (error || !id_token) return res.redirect(`${FRONTEND_URL}/#/login?error=apple_failed`);
+    if (state !== req.session.oauthState) return res.redirect(`${FRONTEND_URL}/#/login?error=state_mismatch`);
+    req.session.oauthState = null;
+    try {
+      const payload = await appleSignin.verifyIdToken(id_token, {
+        audience: process.env.APPLE_CLIENT_ID || 'not-set',
+        ignoreExpiration: false,
+      });
+      const providerId = payload.sub;
+      const email = payload.email || null;
+      let name = 'Apple User';
+      if (userJson) {
+        try {
+          const parsed = JSON.parse(userJson);
+          name = [parsed.name?.firstName, parsed.name?.lastName].filter(Boolean).join(' ') || 'Apple User';
+        } catch {}
+      }
+      const user = upsertSocialUser('apple', providerId, name, email);
+      redirectWithToken(res, user);
+    } catch (err) {
+      console.error('Apple OAuth error:', err.message);
+      res.redirect(`${FRONTEND_URL}/#/login?error=apple_error`);
+    }
+  }
+);
 
 // ═══════════════════════════════════
 //  AUTH ROUTES
