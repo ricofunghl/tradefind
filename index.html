@@ -47,6 +47,8 @@
     .hero { background:linear-gradient(135deg,#1e3a8a 0%,#1e40af 50%,#1d4ed8 100%); color:#fff; text-align:center; padding:5rem 2rem 4rem; }
     .hero h1 { font-size:clamp(1.8rem,5vw,3rem); font-weight:800; margin-bottom:.75rem; }
     .hero h1 span { color:var(--orange); }
+    #hero-city { color:var(--orange); transition:opacity .4s ease; }
+    #hero-city:empty { opacity:0; }
     .hero p { font-size:1.1rem; opacity:.85; margin-bottom:2rem; }
     .hero-tabs { display:flex; gap:.5rem; justify-content:center; margin-bottom:1.5rem; }
     .hero-tab { background:rgba(255,255,255,.15); color:#fff; border:2px solid rgba(255,255,255,.3); border-radius:8px; padding:.5rem 1.25rem; font-weight:600; font-size:.9rem; cursor:pointer; transition:all .2s; }
@@ -1091,7 +1093,7 @@ function renderHome(){
   document.getElementById('app').innerHTML=`
     <div class="hero">
       <div class="container">
-        <h1>Find Trusted <span>Local Contractors</span></h1>
+        <h1 id="hero-title">Find Local Contractors <span id="hero-city"></span></h1>
         <p>Search verified tradespeople, read real reviews, or post a job and get quotes.</p>
         <div class="hero-tabs">
           <div class="hero-tab active" id="tab-find" onclick="switchHeroTab('find')">🔍 Find a Contractor</div>
@@ -1179,6 +1181,41 @@ function renderHome(){
       </p>
     </footer>
   `;
+  resolveHeroCity();
+}
+
+async function resolveHeroCity(){
+  const cityEl = document.getElementById('hero-city');
+  if(!cityEl) return;
+
+  // Check cache first (avoid hammering the geocoder on every page visit)
+  const cached = sessionStorage.getItem('tf_city');
+  if(cached){
+    cityEl.textContent = 'in ' + cached;
+    return;
+  }
+
+  if(!navigator.geolocation){ return; } // silently skip if unavailable
+
+  navigator.geolocation.getCurrentPosition(async pos => {
+    try {
+      const { latitude: lat, longitude: lon } = pos.coords;
+      const r = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
+        { headers: { 'Accept-Language': 'en', 'User-Agent': 'TradeFind/1.0' } }
+      );
+      const data = await r.json();
+      const a = data.address || {};
+      // Pick most specific available locality
+      const city = a.city || a.town || a.suburb || a.village || a.county || a.state;
+      if(city){
+        sessionStorage.setItem('tf_city', city);
+        const el = document.getElementById('hero-city');
+        if(el) el.textContent = 'in ' + city;
+      }
+    } catch { /* silently fail */ }
+  }, () => { /* permission denied — leave default title */ },
+  { timeout: 6000, maximumAge: 5 * 60 * 1000 });
 }
 
 function switchHeroTab(t){
